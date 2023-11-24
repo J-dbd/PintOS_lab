@@ -28,7 +28,12 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list
+timer_asleep()에서 사용된다.*/
+static struct list blocked_list; 
+
 /* Idle thread. */
+//어떤 프로세스에서도 실행되고 있지 않은 스레드
 static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
@@ -220,7 +225,14 @@ void
 thread_block (void) {
 	ASSERT (!intr_context ());
 	ASSERT (intr_get_level () == INTR_OFF);
-	thread_current ()->status = THREAD_BLOCKED;
+	struct thread* curr = thread_current();
+	//thread_current ()->status = THREAD_BLOCKED;
+	//////////////////////////////////////////////////////////
+	curr->status = THREAD_BLOCKED;
+	if (curr != idle_thread)
+		list_push_back (&blocked_list, &curr->elem);
+	//list_push_back(&blocked_list, thread_current()); //block리스트에 넣어줌
+	///////////////////////////////////////////////////////////
 	schedule ();
 }
 
@@ -589,3 +601,5 @@ allocate_tid (void) {
 
 	return tid;
 }
+
+// search block list

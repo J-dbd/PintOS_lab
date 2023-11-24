@@ -89,13 +89,49 @@ timer_elapsed (int64_t then) {
 
 /* Suspends execution for approximately TICKS timer ticks. */
 /* TODO : queue를 활용? linux kernel park를 참고(JM's team)한 디자인*/
+
+// thread struct에 tick을 넣고 비교를 한다?
+
+
 void
 timer_sleep (int64_t ticks) {
+	//시작시점을 저장한다.
 	int64_t start = timer_ticks ();
-
+	//현재 스레드를 저장한다.
+	struct thread* current_thread = thread_current();
+		printf("current_thread: %s\n", current_thread->name);
+	//set ticks
+	//현재 스레드의 tick에 timer sleep으로 전달 받은 tick을 설정해준다. 
+	// 내가 이만큼 잠재워 두겠다는 뜻이니까.
+	current_thread->tick = ticks;
+		printf("CT's tick setting: %d\n", current_thread->tick);
+	
+	//현재 스레드를 블록한다. 
+	thread_block();
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+
+	//블록 리스트를 순회한다.
+	//이것을 이 레벨에서 해도 되는가? thread.c 에서 해야 하는가?
+	struct list_elem * p;
+	for(p=list_begin(&blocked_list); p!=list_end(&blocked_list); p=list_next(p)){
+		struct thread* blocked_thread = list_entry(p,struct thread,elem);
+		if (blocked_thread->tick >= timer_elapsed (start)){
+			thread_unblock(blocked_thread);
+			list_remove(p);
+			continue;
+		}
+	}
+
+	
+
+	
+
+	
+
+	// while (timer_elapsed (start) < ticks){
+	// 	thread_yield ();
+	// }
+		
 }
 
 
