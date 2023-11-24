@@ -525,6 +525,7 @@ thread_launch (struct thread *th) {
  * This function modify current thread's status to status and then
  * finds another thread to run and switches to it.
  * It's not safe to call printf() in the schedule(). */
+/* TODO : keyword의 마지막 그거로 구현 해야 함 */
 static void
 do_schedule(int status) {
 	ASSERT (intr_get_level () == INTR_OFF);
