@@ -75,7 +75,7 @@ int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
-	intr_set_level (old_level);
+ 	intr_set_level (old_level);
 	barrier ();
 	return t;
 }
@@ -99,28 +99,40 @@ timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 	//현재 스레드를 저장한다.
 	struct thread* current_thread = thread_current();
-		printf("current_thread: %s\n", current_thread->name);
+	printf("[1] current_thread: %s\n", current_thread->name);
 	//set ticks
 	//현재 스레드의 tick에 timer sleep으로 전달 받은 tick을 설정해준다. 
 	// 내가 이만큼 잠재워 두겠다는 뜻이니까.
 	current_thread->tick = ticks;
-		printf("CT's tick setting: %d\n", current_thread->tick);
+	printf("[2] CT's tick setting: %d\n", current_thread->tick);
 	
-	//현재 스레드를 블록한다. 
+	//목표 스레드를 블록한다. 
 	thread_block();
+	//adding_blocked_list(current_thread);
+	printf("[3] blocked_thread status = %s\n", current_thread->status);
 	ASSERT (intr_get_level () == INTR_ON);
+
+//리스트를 내림차순?
 
 	//블록 리스트를 순회한다.
 	//이것을 이 레벨에서 해도 되는가? thread.c 에서 해야 하는가?
 	struct list_elem * p;
-	for(p=list_begin(&blocked_list); p!=list_end(&blocked_list); p=list_next(p)){
+
+	if((!(list_empty(&blocked_list)))){
+
+
+		for(p=list_begin(&blocked_list); p!=list_end(&blocked_list); p=list_next(p)){
+
 		struct thread* blocked_thread = list_entry(p,struct thread,elem);
-		if (blocked_thread->tick >= timer_elapsed (start)){
+
+		if (blocked_thread->tick > timer_elapsed (start)){
 			thread_unblock(blocked_thread);
 			list_remove(p);
 			continue;
+			}
 		}
 	}
+	
 
 	
 

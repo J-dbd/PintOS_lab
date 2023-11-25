@@ -149,5 +149,7 @@ void do_iret (struct intr_frame *tf);
 /* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list
 timer_asleep()에서 사용된다.*/
 static struct list blocked_list; 
+//void blocking_thread(struct list* blocked_list, struct thread* target);
+//void adding_blocked_list(struct thread* target);
 
 #endif /* threads/thread.h */
