@@ -92,7 +92,7 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-	int tick; // for checker [1]
+	int sleeping_time; // for checker [1]
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -146,10 +146,13 @@ int thread_get_load_avg (void);
 void do_iret (struct intr_frame *tf);
 
 ///////////////////////////////
-/* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list
-timer_asleep()에서 사용된다.*/
-static struct list blocked_list; 
-//void blocking_thread(struct list* blocked_list, struct thread* target);
-//void adding_blocked_list(struct thread* target);
+/* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list. 이 리스트에 들어가있는 thread는 잠들어 있다.*/
+static struct list sleep_list; 
+//void blocking_thread(struct list* sleep_list, struct thread* target);
+//void adding_sleep_list(struct thread* target);
+
+void push_sleeping_list(struct thread* target);
+void pop_sleeping_list(struct thread* target);
+
 
 #endif /* threads/thread.h */

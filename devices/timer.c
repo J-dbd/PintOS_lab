@@ -97,55 +97,41 @@ void
 timer_sleep (int64_t ticks) {
 	//시작시점을 저장한다.
 	int64_t start = timer_ticks ();
+	//종료될 시각을 저장한다. 
+	int64_t sleep_time = start + ticks;
 	//현재 스레드를 저장한다.
 	struct thread* current_thread = thread_current();
-	printf("[1] current_thread: %s\n", current_thread->name);
-	//set ticks
-	//현재 스레드의 tick에 timer sleep으로 전달 받은 tick을 설정해준다. 
-	// 내가 이만큼 잠재워 두겠다는 뜻이니까.
-	current_thread->tick = ticks;
-	printf("[2] CT's tick setting: %d\n", current_thread->tick);
+		printf("[1] current_thread: %s\n", current_thread->name);	
 	
-	//목표 스레드를 블록한다. 
-	thread_block();
-	//adding_blocked_list(current_thread);
-	printf("[3] blocked_thread status = %s\n", current_thread->status);
+	//interrupts should be turned off to call the function 'thread block'
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
+	sleep_thread(current_thread, sleep_time);
 	ASSERT (intr_get_level () == INTR_ON);
 
-//리스트를 내림차순?
+	intr_set_level (old_level);
 
-	//블록 리스트를 순회한다.
-	//이것을 이 레벨에서 해도 되는가? thread.c 에서 해야 하는가?
+
+}
+void timer_awake (int64_t ticks){
+
 	struct list_elem * p;
+	//sleep list를 순회 돌며 일어날 시간이 되는 thread를 탐색한다.
+	for(p=list_begin(&sleep_list); p!=list_end(&sleep_list);){
 
-	if((!(list_empty(&blocked_list)))){
+		struct thread* sleeped_thread = list_entry(p,struct thread,elem);
 
+		if (sleeped_thread->sleeping_time > ticks){
 
-		for(p=list_begin(&blocked_list); p!=list_end(&blocked_list); p=list_next(p)){
-
-		struct thread* blocked_thread = list_entry(p,struct thread,elem);
-
-		if (blocked_thread->tick > timer_elapsed (start)){
-			thread_unblock(blocked_thread);
+			thread_unblock(sleeped_thread);
+			pop_sleeping_list(sleeped_thread);
 			list_remove(p);
 			continue;
 			}
 		}
-	}
-	
-
-	
-
-	
-
-	
-
-	// while (timer_elapsed (start) < ticks){
-	// 	thread_yield ();
-	// }
-		
+		p=list_next(p);
 }
-
 
 /* Suspends execution for approximately MS milliseconds. */
 void
@@ -176,6 +162,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	timer_awake(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

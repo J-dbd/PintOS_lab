@@ -30,7 +30,7 @@ static struct list ready_list;
 
 /* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list
 timer_asleep()에서 사용된다.*/
-static struct list blocked_list; 
+static struct list sleep_list; 
 
 /* Idle thread. */
 //어떤 프로세스에서도 실행되고 있지 않은 스레드
@@ -114,8 +114,8 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
-	////////////////////////////////////
-	list_init (&blocked_list);
+	//////////////[Feat] [1]//////////////////
+	list_init (&sleep_list); 
 	/////////////////////////////////////
 
 	/* Set up a thread structure for the running thread. */
@@ -227,40 +227,41 @@ thread_create (const char *name, int priority,
 void
 thread_block (void) {
 	
-
-	printf("%s\n", thread_current()->name);
 	ASSERT (!intr_context ());
 	ASSERT (intr_get_level () == INTR_OFF);
-
-	
-	//thread_current ()->status = THREAD_BLOCKED;
-
-	///////////////////////
-	struct thread* curr = thread_current();
-	
-	curr->status = THREAD_BLOCKED;
-	if (curr != idle_thread)
-		list_push_back (&blocked_list, &curr->elem);
-	/////////////////////////
+	thread_current ()->status = THREAD_BLOCKED;
 	schedule ();
+
+}
+
+void push_sleeping_list(struct thread* target){
+	if (target != idle_thread)
+	list_push_back(&sleep_list, &target->elem);
+}
+
+void pop_sleeping_list(struct thread* target){
+	if(target!=idle_thread)
+	list_push_front(&sleep_list, &target->elem);
+}
+
+void sleep_thread(struct thread* target, int64_t waiting_time){
+
+	target->sleeping_time = waiting_time;
+		printf("[2] CT's tick setting: %d\n", target->sleeping_time);
+
+	thread_block();
+
+	push_sleeping_list(target);
+		printf("[3] blocked_thread status = %s\n", target->status);
+	
 	
 
-	//struct thread* curr = thread_current();
-	//thread_current ()->status = THREAD_BLOCKED;
-	//////////////////////////////////////////////////////////
-	// struct thread* curr = thread_current();
-	// printf("name: %s / status: %s\n",curr->name, curr->status);
-	// curr->status = THREAD_BLOCKED;
-	// if (curr != idle_thread)
-	// 	list_push_back (&blocked_list, &curr->elem);
-	
-	//list_push_back(&blocked_list, thread_current()); //block리스트에 넣어줌
-	///////////////////////////////////////////////////////////
+
 
 }
 // ///////////////////
-// void adding_blocked_list(struct thread* target){
-// 	list_push_back(&blocked_list, &target->elem);
+// void adding_sleep_list(struct thread* target){
+// 	list_push_back(&sleep_list, &target->elem);
 // }
 // ///////////////////
 
@@ -281,16 +282,11 @@ thread_unblock (struct thread *t) {
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
 	list_push_back (&ready_list, &t->elem);
-	/////////////////////////////////////////////
-	
-	if(!(list_empty(&blocked_list))){
-		/* blocked_list가 비어있지 않다면*/
-		list_pop_front(&blocked_list); //block list의 front pop;
-	}
-	/////////////////////////////////////////////
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
+
+
 
 /* Returns the name of the running thread. */
 const char *
