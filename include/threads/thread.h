@@ -145,8 +145,8 @@ void do_iret (struct intr_frame *tf);
 
 ///////////////// [project1-A] ////////////////////////////
 static struct list sleep_list;
-void sleep_thread(int64_t waiting_time);
-void awake_thread(int64_t ticks);
+void sleep_thread (int64_t waiting_time);
+void awake_thread (int64_t ticks);
 //////////////////////////////////////////////////////////
 
 

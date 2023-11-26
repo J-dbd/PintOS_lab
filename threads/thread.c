@@ -252,7 +252,8 @@ thread_unblock (struct thread *t) {
 }
 
 /* make a thread sleep */
-void sleep_thread(int64_t waiting_time){ //[project1-A]
+void 
+sleep_thread (int64_t waiting_time) { //[project1-A]
 
 	struct thread* current_thread = thread_current();
 	current_thread->sleeping_time = waiting_time;
@@ -262,7 +263,8 @@ void sleep_thread(int64_t waiting_time){ //[project1-A]
 
 /* wake up the thread which satisfies awaking conditions: 
 	over the waiting time in itself.*/
-void awake_thread(int64_t ticks){ //[project1-A]
+void 
+awake_thread (int64_t ticks) { //[project1-A]
 
 	struct list_elem * p;
 
@@ -272,7 +274,7 @@ void awake_thread(int64_t ticks){ //[project1-A]
 
 		if (sleeped_thread->sleeping_time <= ticks){
 			//list_remove returns next elem in the list.
-			p=list_remove(p);
+			p = list_remove(p);
 			thread_unblock(sleeped_thread);
 			continue;
 			}
