@@ -4,6 +4,7 @@
         "*njk": "html",
         "thread.h": "c",
         "timer.h": "c",
-        "round.h": "c"
+        "round.h": "c",
+        "list.h": "c"
     }
 }

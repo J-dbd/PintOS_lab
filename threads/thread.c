@@ -58,6 +58,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+static bool value_less (const struct list_elem *, const struct list_elem *,void *); // [project1-B]
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -213,7 +215,34 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	// [project1-B]
+
+	/* compare the priorities of the currently running thread and the newly inserted one. 
+	Yield the CPU if the newly arriving thread has higher priority (pptx)*/
+
+	thread_switch();
+
+
 	return tid;
+}
+
+// [project1-B]
+void thread_switch() {
+	/* ready list 가 비어있다면, idle thread인 경우이고
+	   이럴 때에는 switch 할 필요가 없다. */
+	if (list_empty(&ready_list)){ //idle thread인 경우 이게 필요 없음
+		return;
+	}
+
+	struct list_elem* e = list_front(&ready_list);
+	struct thread* ready_front = list_entry(e, struct thread, elem);
+
+	int new_priority = ready_front->priority; 
+	int current_priority = thread_get_priority();
+
+	if (new_priority > current_priority){
+		thread_yield();
+	}
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -246,7 +275,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	//list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL); // [project1-B]
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -341,7 +371,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		//list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); // [project1-B] 
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -350,6 +381,7 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_switch();
 }
 
 /* Returns the current thread's priority. */
@@ -459,6 +491,10 @@ next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
 	else
+		// [project1-B]
+		// run the thread with highest priority
+		//list_sort (&ready_list, value_less, NULL);
+
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
@@ -625,4 +661,14 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+// [project1-B] 
+/*  <list_less_func *> for sorting list*/
+static bool cmp_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+	struct thread*  a = list_entry(a_, struct thread, elem);
+	struct thread*  b = list_entry(b_, struct thread, elem);
+	//printf("ap: %d , bp: %d\n", a->priority, b->priority);
+
+	return a->priority > b->priority;
 }

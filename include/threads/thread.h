@@ -148,6 +148,7 @@ static struct list sleep_list;
 void sleep_thread (int64_t waiting_time);
 void awake_thread (int64_t ticks);
 //////////////////////////////////////////////////////////
+static bool cmp_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 
 #endif /* threads/thread.h */
