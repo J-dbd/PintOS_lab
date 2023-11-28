@@ -219,9 +219,7 @@ thread_create (const char *name, int priority,
 
 	/* compare the priorities of the currently running thread and the newly inserted one. 
 	Yield the CPU if the newly arriving thread has higher priority (pptx)*/
-
 	thread_switch();
-
 
 	return tid;
 }
@@ -276,7 +274,7 @@ thread_unblock (struct thread *t) {
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
 	//list_push_back (&ready_list, &t->elem);
-	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL); // [project1-B]
+	list_insert_ordered(&ready_list, &t->elem, cmp_thread_priority, NULL); // [project1-B]
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -372,7 +370,7 @@ thread_yield (void) {
 	old_level = intr_disable ();
 	if (curr != idle_thread)
 		//list_push_back (&ready_list, &curr->elem);
-		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); // [project1-B] 
+		list_insert_ordered(&ready_list, &curr->elem, cmp_thread_priority, NULL); // [project1-B] 
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -665,7 +663,7 @@ allocate_tid (void) {
 
 // [project1-B] 
 /*  <list_less_func *> for sorting list*/
-static bool cmp_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
 	struct thread*  a = list_entry(a_, struct thread, elem);
 	struct thread*  b = list_entry(b_, struct thread, elem);
 	//printf("ap: %d , bp: %d\n", a->priority, b->priority);

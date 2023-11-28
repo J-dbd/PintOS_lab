@@ -32,6 +32,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+// [project1-B]
+bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -63,10 +66,13 @@ sema_down (struct semaphore *sema) {
 
 	ASSERT (sema != NULL);
 	ASSERT (!intr_context ());
-
+	//make interupt off
 	old_level = intr_disable ();
+
 	while (sema->value == 0) {
-		list_push_back (&sema->waiters, &thread_current ()->elem);
+		//list_push_back (&sema->waiters, &thread_current ()->elem); 
+		list_insert_ordered(&sema->waiters, &thread_current ()->elem, cmp_thread_priority, NULL); // [project1-B]
+
 		thread_block ();
 	}
 	sema->value--;
@@ -105,15 +111,20 @@ sema_try_down (struct semaphore *sema) {
 void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
-
 	ASSERT (sema != NULL);
-
 	old_level = intr_disable ();
-	if (!list_empty (&sema->waiters))
+
+	if (!list_empty (&sema->waiters)) {	
+		list_sort(&sema->waiters, cmp_thread_priority, NULL); // [project1-B]
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
+		}
 	sema->value++;
 	intr_set_level (old_level);
+	// [project1-B]
+	//pass tests/threads/priority-donate-sema
+	thread_switch();
+	//thread_yield();
 }
 
 static void sema_test_helper (void *sema_);
@@ -282,7 +293,8 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
-	list_push_back (&cond->waiters, &waiter.elem);
+	//list_push_back (&cond->waiters, &waiter.elem);
+	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, NULL); // [project1-B]
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
@@ -302,9 +314,11 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
 
-	if (!list_empty (&cond->waiters))
+	if (!list_empty (&cond->waiters)) {
+		list_sort(&cond->waiters, cmp_sem_priority, NULL);// [project1-B]
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
+					}
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -320,4 +334,47 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
+}
+
+
+/*
+ [project1-B]
+condition 
+		- waiters (a list of [struct semaphore_elem]s)
+			- semaphore_elem { elem(list_elem), semaphore(struct) }
+									-semaphore { value(int), waiters(list)}
+																-thread{ ... priority ...}
+*/
+		
+bool
+cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED) {
+	// take semaphore elem from waiters of condition 
+	const struct semaphore_elem* left_sema_elem = list_entry(lft_sema_elem, struct semaphore_elem, elem);
+	const struct semaphore_elem* right_sema_elem = list_entry(rght_sema_elem, struct semaphore_elem, elem);
+	// get semaphore from semaphore_elem
+	const struct semaphore* left_sema = &left_sema_elem->semaphore;
+	const struct semaphore* right_sema = &right_sema_elem->semaphore;
+	// get list(waiters) from each semaphore
+	const struct list* left_sema_waiters = &left_sema->waiters;
+	const struct list* right_sema_waiters = &right_sema->waiters;
+	//checking
+	if(list_empty(left_sema_waiters)) {
+		return false;
+	}
+
+	else if (list_empty(right_sema_waiters)) {
+		return true;
+	}
+	// get list_elems of threads
+	const struct list_elem* left_waiters_first = list_begin(left_sema_waiters);
+	const struct list_elem* right_waiters_first = list_begin(right_sema_waiters);
+	// get thread of highest priority from the semaphore's waiters. 
+	const struct thread* left_top_thread =  list_entry(left_waiters_first, struct thread, elem);
+	const struct thread* right_top_thread =  list_entry(right_waiters_first, struct thread, elem);
+	
+	/* shortcut */
+	// const struct thread* left_top_thread =  list_entry(list_begin(left_sema_waiters), struct thread, elem);
+	// const struct thread* right_top_thread =  list_entry(list_begin(right_sema_waiters), struct thread, elem);
+
+	return left_top_thread->priority > right_top_thread->priority;
 }
