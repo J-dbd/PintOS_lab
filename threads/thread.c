@@ -116,13 +116,13 @@ thread_init (void) {
 	list_init (&ready_list);
 	list_init (&destruction_req);
 	list_init (&sleep_list); // [project1-A]
-	
-
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
+
+	
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -378,8 +378,25 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	//thread_current ()->priority = new_priority;
+
+	struct thread* curr = thread_current ();
+	curr->priority = new_priority;
+	curr->original_priority = new_priority;
+
+	//interrupt OFF
+	enum intr_level old_level;
+	old_level= intr_disable ();
+
+	if(!(list_empty(&curr->donations))){
+		donate_priority();
+		refresh_priority();
+	}
+	
 	thread_switch();
+
+	//interrupt ON
+	intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -477,6 +494,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	//[ project1-B : Donation ]
+	/* initialize donation list & origianl priority */
+	list_init(&t->donations); 
+	t->original_priority = priority; 
+	t->wait_on_lock=NULL;
+	//lock_init(&t->wait_on_lock);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

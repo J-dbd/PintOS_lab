@@ -94,6 +94,16 @@ struct thread {
 	int64_t sleeping_time;				/* tag given sleepting time [project1-A]  */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+	
+	/* [ project1-B : Donation ] - priority donation */ 
+	struct lock* wait_on_lock; 
+	//해당 쓰레드가 대기하고 있는 lock자료구조의 주소를 저장할 필드
+	//donation을 준 threads를 저장하는 리스트와 그 list element.
+	struct list donations;
+	struct list_elem d_elem; 
+	//기존 priority를 저장하는 곳
+	int original_priority;
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
