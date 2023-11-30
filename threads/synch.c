@@ -212,7 +212,8 @@ lock_acquire (struct lock *lock) {
 
 	if(holder){
 		curr->wait_on_lock = lock;
-		list_insert_ordered(&holder->donations, &holder->d_elem, cmp_donation_priority, NULL);
+		//list_insert_ordered(&holder->donations, &holder->d_elem, cmp_donation_priority, NULL);
+		list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
 		donate_priority();
 	}
 
@@ -224,31 +225,35 @@ lock_acquire (struct lock *lock) {
 
 void donate_priority(void) {
 	struct thread* current_lholder = thread_current()->wait_on_lock->holder;
-	printf("현재 락 소유자 : %s, 락 요청한 스레드 이름:%s \n", current_lholder->name, thread_name());
-	//비교를 위한 max priority 세팅
-	int max_priority = current_lholder->priority;
-	// struct thread* curr = thread_current();
-	// if (max_priority > thread_get_priority()) {
-	// 	curr->priority = max_priority;
-	// }
-	//int max_priority = curr->priority;
+
+	int max_priority = thread_current()->priority;
 	struct thread* lhder;
-	for(lhder = current_lholder; lhder == NULL; lhder= lhder->wait_on_lock->holder) {
+
+	
+	for(lhder = current_lholder; (lhder->wait_on_lock)!= NULL; lhder = lhder->wait_on_lock->holder) {
+
+		//printf("current_lholder->pri : %d", lhder->priority);
+
 
 			if (lhder->priority > max_priority) {
 				max_priority = lhder->priority;
-				//list_insert_ordered(&lhder->donations, &lhder->d_elem, cmp_donation_priority, NULL);
-				//printf("case 1 / max_priority = %d\n", max_priority);
 			}
 
 			if (lhder->priority < max_priority) {
 				lhder->priority = max_priority;
-				//printf("case 2 / max_priority = %d\n", max_priority);
-
 			}
+
+			// if (&(lhder->wait_on_lock)==NULL) {
+			// 	lhder = max_priority;
+			// }
 		}
+	
+	if(lhder!=NULL){
+		lhder->priority = max_priority;
+	}
 
 	current_lholder->priority = max_priority;
+
 
 }
 
@@ -294,7 +299,6 @@ lock_release (struct lock *lock) {
 	remove_with_lock(lock);
 	refresh_priority();
 
-	
 	sema_up (&lock->semaphore);
 	lock->holder = NULL; //lock 해지
 	
@@ -327,30 +331,36 @@ void remove_with_lock(struct lock *lock) {
 
 		if (t->wait_on_lock == lock){
 			e = list_remove(e);
+			continue;
 
 		}
+
+		// if (e == list_tail(donations)){
+		// 	break;
+		// }
 		e = list_next(e);
 
 	}
+
 
 }
 
 void refresh_priority(void) {
 	struct thread* curr = thread_current();
-	int origin_priority = curr->original_priority;
 
-	curr->priority = origin_priority;
+	int max_priority = curr->original_priority;
 
 	if(list_empty(&curr->donations) ==false){
 
-		list_sort(&curr->donations, cmp_donation_priority, NULL);
+		//list_sort(&curr->donations, cmp_donation_priority, NULL);
 
 		int top_priority = list_entry(list_begin(&curr->donations), struct thread, d_elem)->priority;
-		
-		if (top_priority > origin_priority) {
-			curr->priority = top_priority;
+
+		if (top_priority > max_priority) {
+			max_priority = top_priority;
 		}
 	}
+	curr->priority = max_priority;
 	
 }
 

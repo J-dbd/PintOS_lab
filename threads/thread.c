@@ -239,6 +239,7 @@ void thread_switch() {
 	int current_priority = thread_get_priority();
 
 	if (new_priority > current_priority){
+		//donate_priority();
 		thread_yield();
 	}
 }
@@ -379,24 +380,28 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	//thread_current ()->priority = new_priority;
-
 	struct thread* curr = thread_current ();
-	curr->priority = new_priority;
-	curr->original_priority = new_priority;
+	/* 11 of 27 tests failed. */
+	
+	// curr->original_priority = new_priority;
+	// if(list_empty(&curr->donations)){
+	// 	curr->priority = new_priority;
+	// }
 
-	//interrupt OFF
-	enum intr_level old_level;
-	old_level= intr_disable ();
-
-	if(!(list_empty(&curr->donations))){
-		donate_priority();
-		refresh_priority();
+	if (curr->priority == curr->original_priority) {
+		curr->priority = new_priority;
+		curr->original_priority = new_priority;
+		
+	} else {
+		curr->original_priority = new_priority;
 	}
+
+	//donate_priority();
+
+	//refresh_priority();
 	
 	thread_switch();
 
-	//interrupt ON
-	intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */

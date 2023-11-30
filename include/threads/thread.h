@@ -97,12 +97,9 @@ struct thread {
 	
 	/* [ project1-B : Donation ] - priority donation */ 
 	struct lock* wait_on_lock; 
-	//해당 쓰레드가 대기하고 있는 lock자료구조의 주소를 저장할 필드
-	//donation을 준 threads를 저장하는 리스트와 그 list element.
-	struct list donations;
+	struct list donations; // 해당 thread가 lock의 holder일 때 lock을 요청하는 모든 threads를 저장
 	struct list_elem d_elem; 
-	//기존 priority를 저장하는 곳
-	int original_priority;
+	int original_priority; //thread의 고유 priority를 저장
 
 
 #ifdef USERPROG
