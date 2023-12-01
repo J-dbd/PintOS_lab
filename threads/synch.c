@@ -32,13 +32,14 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-//[ project1-B : Donation ]
+
+// [project1-B]
+bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
+//[ project1-B : donation ]
 void donate_priority(void);
 void remove_with_lock(struct lock *lock);
 void refresh_priority(void);
 bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) ;
-// [project1-B]
-bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -75,9 +76,7 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 
 	while (sema->value == 0) {
-		//list_push_back (&sema->waiters, &thread_current ()->elem); 
 		list_insert_ordered(&sema->waiters, &thread_current ()->elem, cmp_thread_priority, NULL); // [project1-B]
-
 		thread_block ();
 	}
 	sema->value--;
@@ -210,19 +209,20 @@ lock_acquire (struct lock *lock) {
 	enum intr_level old_level;
 	old_level= intr_disable ();
 
+	//[ project1-B : donation ]
+
 	if(holder){
 		curr->wait_on_lock = lock;
-		//list_insert_ordered(&holder->donations, &holder->d_elem, cmp_donation_priority, NULL);
 		list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
 		donate_priority();
 	}
 
 	sema_down (&lock->semaphore);
-	//curr->wait_on_lock = NULL;
 	lock->holder = curr; 
 	intr_set_level (old_level);
 }
 
+//[ project1-B : donation ]
 void donate_priority(void) {
 	struct thread* current_lholder = thread_current()->wait_on_lock->holder;
 
@@ -232,9 +232,6 @@ void donate_priority(void) {
 	
 	for(lhder = current_lholder; (lhder->wait_on_lock)!= NULL; lhder = lhder->wait_on_lock->holder) {
 
-		//printf("current_lholder->pri : %d", lhder->priority);
-
-
 			if (lhder->priority > max_priority) {
 				max_priority = lhder->priority;
 			}
@@ -242,10 +239,6 @@ void donate_priority(void) {
 			if (lhder->priority < max_priority) {
 				lhder->priority = max_priority;
 			}
-
-			// if (&(lhder->wait_on_lock)==NULL) {
-			// 	lhder = max_priority;
-			// }
 		}
 	
 	if(lhder!=NULL){
