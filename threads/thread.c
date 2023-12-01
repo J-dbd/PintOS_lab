@@ -11,8 +11,12 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+// [project1-C]
+#include "fixed_point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+
+
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -379,27 +383,21 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	//thread_current ()->priority = new_priority;
-	struct thread* curr = thread_current ();
-	/* 11 of 27 tests failed. */
-	
-	// curr->original_priority = new_priority;
-	// if(list_empty(&curr->donations)){
-	// 	curr->priority = new_priority;
-	// }
 
-	if (curr->priority == curr->original_priority) {
+	struct thread* curr = thread_current ();
+
+	if(! thread_mlfqs) {
+		if (curr->priority == curr->original_priority) {
 		curr->priority = new_priority;
 		curr->original_priority = new_priority;
 		
-	} else {
-		curr->original_priority = new_priority;
+		} else {
+			curr->original_priority = new_priority;
+		}
+
 	}
-
-	//donate_priority();
-
-	//refresh_priority();
 	
+	curr->priority = new_priority;
 	thread_switch();
 
 }
@@ -414,6 +412,7 @@ thread_get_priority (void) {
 void
 thread_set_nice (int nice UNUSED) {
 	/* TODO: Your implementation goes here */
+	// interrupt off needed 
 }
 
 /* Returns the current thread's nice value. */

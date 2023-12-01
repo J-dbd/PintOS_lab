@@ -206,20 +206,23 @@ lock_acquire (struct lock *lock) {
 	struct thread* curr = thread_current();
 	struct thread* holder = lock->holder;
 
-	enum intr_level old_level;
-	old_level= intr_disable ();
+	enum intr_level old_level; //
+	old_level= intr_disable (); //
 
-	//[ project1-B : donation ]
+	if(! thread_mlfqs) {
 
-	if(holder){
-		curr->wait_on_lock = lock;
-		list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
-		donate_priority();
+		//[ project1-B : donation ]
+
+		if(holder){
+			curr->wait_on_lock = lock;
+			list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
+			donate_priority();
+		}
 	}
 
 	sema_down (&lock->semaphore);
-	lock->holder = curr; 
-	intr_set_level (old_level);
+	lock->holder = curr;
+	intr_set_level (old_level); //
 }
 
 //[ project1-B : donation ]
@@ -286,18 +289,19 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 	//interrupt OFF
-	enum intr_level old_level;
-	old_level= intr_disable ();
+	enum intr_level old_level;//
+	old_level= intr_disable ();//
 
-	remove_with_lock(lock);
-	refresh_priority();
+	if(! thread_mlfqs) {
+		remove_with_lock(lock);
+		refresh_priority();
+	}
 
 	sema_up (&lock->semaphore);
 	lock->holder = NULL; //lock 해지
 	
-
 	//interrupt ON
-	intr_set_level (old_level);
+	intr_set_level (old_level);//
 }
 void remove_with_lock(struct lock *lock) {
 
