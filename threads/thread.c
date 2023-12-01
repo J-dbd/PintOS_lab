@@ -61,6 +61,10 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0 
+#define LOAD_AVG_DEFAULT 0
+
 
 static bool value_less (const struct list_elem *, const struct list_elem *,void *); // [project1-B]
 
@@ -72,6 +76,9 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+
+// [project1-C]
+static int load_avg ;
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -143,6 +150,9 @@ thread_start (void) {
 
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down (&idle_started);
+
+	// [project1-C]
+	load_avg = LOAD_AVG_DEFAULT; //booting
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -413,27 +423,49 @@ void
 thread_set_nice (int nice UNUSED) {
 	/* TODO: Your implementation goes here */
 	// interrupt off needed 
+
+	struct thread* curr = thread_current();
+
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
+	curr->nice = nice;
+	// mlfq_prioty 
+	//thread_switch();
+
+	intr_set_level (old_level);
+
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	// return mult_mixed(load_avg, 100);
+	return load_avg * 100;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	struct thread* curr = thread_current();
+	enum intr_level old_level;
+	old_level = intr_disable ();
+	
+	//2진수의 탈을 쓴 정수인가?
+	int res = curr->recent_cpu * 100;
+
+	intr_set_level (old_level);
+
+	return res; 
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -505,6 +537,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->original_priority = priority; 
 	t->wait_on_lock=NULL;
 	//lock_init(&t->wait_on_lock);
+
+	// [project1-C]
+	t->nice = NICE_DEFAULT; 
+	t->recent_cpu = RECENT_CPU_DEFAULT;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

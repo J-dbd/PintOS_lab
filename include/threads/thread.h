@@ -101,6 +101,12 @@ struct thread {
 	struct list_elem d_elem; 
 	int original_priority; //thread의 고유 priority를 저장
 
+	// [project1-C]
+	int recent_cpu;
+	int nice;
+
+
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

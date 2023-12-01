@@ -7,6 +7,7 @@
         "round.h": "c",
         "list.h": "c",
         "debug.h": "c",
-        "interrupt.h": "c"
+        "interrupt.h": "c",
+        "random.h": "c"
     }
 }
