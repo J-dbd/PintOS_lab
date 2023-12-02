@@ -407,18 +407,24 @@ thread_set_priority (int new_priority) {
 
 	}
 	
-	curr->priority = new_priority;
+	if(thread_mlfqs){
+		curr->priority = new_priority;
+	}
+	
 	thread_switch();
 
 }
-
+// [project1-C]
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
 	return thread_current ()->priority;
 }
-
+// [project1-C]
 /* Sets the current thread's nice value to NICE. */
+/* 1) Sets the current thread's nice value to new nice 
+   2) recalculates the thread's priority based on the new value. 
+   3) If the running thread no longer has the highest priority, yields. */
 void
 thread_set_nice (int nice UNUSED) {
 	/* TODO: Your implementation goes here */
@@ -430,28 +436,50 @@ thread_set_nice (int nice UNUSED) {
 	old_level = intr_disable ();
 
 	curr->nice = nice;
-	// mlfq_prioty 
+	// mlfqs_priority(curr);
 	//thread_switch();
+
+	thread_switch();
 
 	intr_set_level (old_level);
 
 }
-
+// [project1-C]
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) {
-	/* TODO: Your implementation goes here */
-	return thread_current()->nice;
-}
+	enum intr_level old_level;
+	old_level = intr_disable ();
 
+	int nice = thread_current()->nice;
+
+	intr_set_level (old_level);
+
+	return nice;
+}
+// [project1-C]
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
 	/* TODO: Your implementation goes here */
 	// return mult_mixed(load_avg, 100);
-	return load_avg * 100;
-}
+	//return load_avg * 100;
 
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
+
+	int load_avg100 = mult_mixed(load_avg, 100);
+	load_avg100 = fp_to_int(load_avg100);
+	//int res = fp_to_int(load_avg100);
+
+	intr_set_level (old_level);
+
+	return load_avg100;
+	
+
+}
+// [project1-C]
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) {
@@ -460,12 +488,13 @@ thread_get_recent_cpu (void) {
 	enum intr_level old_level;
 	old_level = intr_disable ();
 	
-	//2진수의 탈을 쓴 정수인가?
-	int res = curr->recent_cpu * 100;
+
+	int recent_cpu100 = mult_mixed(curr->recent_cpu, 100);
+	recent_cpu100 = fp_to_int(recent_cpu100);
 
 	intr_set_level (old_level);
 
-	return res; 
+	return recent_cpu100; 
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -733,4 +762,193 @@ bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b
 	//printf("ap: %d , bp: %d\n", a->priority, b->priority);
 
 	return a->priority > b->priority;
+}
+
+
+// [project1-C] /////////////////////////////
+
+void
+mlfqs_calc_load_avg(void) {
+	int cvted_59 = int_to_fp(59);
+	int cvted_60 = int_to_fp(60);
+	int cvted_1 = int_to_fp(1);
+	
+	int front_frac = div_fp(cvted_59, cvted_60);
+	int back_frac = div_fp(cvted_1, cvted_60);
+
+	int num_rdyths = list_size(&ready_list);
+
+	if (thread_current() != idle_thread) {
+		num_rdyths++; 
+		//threads in executing at the time of update. (except idle thread)
+	}
+
+
+	int front = mult_fp(front_frac, load_avg);
+	int back = mult_mixed(back_frac, num_rdyths);
+
+	load_avg = add_fp(front, back);
+
+	//printf("load_avg: %d \n",load_avg);
+
+}
+/* calculate decay for recent_cpu
+   decay = (2*load_average)/ (2*load_average + 1)
+*/
+int
+calc_decay(void) {
+
+	int load_avb2 = mult_mixed(2, load_avg);
+	int first = load_avb2;
+	int second = add_mixed(load_avb2, 1);
+
+	return div_fp(first, second);
+
+}
+/* Increase the recent_cpu of the currently running process by 1 in every timer interrupt*/
+// 함수로 빼지 않아도 될 것 같음
+void
+increase_recent_cpu(void) {
+
+	struct thread* t = thread_current();
+	
+	if (t == idle_thread) {
+		 return;
+	}
+
+	//t->recent_cpu ++;
+	
+	int curr_recent_cpu = t->recent_cpu;
+	int incresed_recent = add_mixed(curr_recent_cpu, 1);
+	t->recent_cpu = incresed_recent;
+
+
+	int forchecking;
+}
+
+/* decay and adjust in every second
+   get thread as param
+
+   recent_cpu = decay * recent_cpu + nice,
+   */
+void
+update_recent_cpu(struct thread* t) {
+
+	if (t == idle_thread) {
+		return;
+	}
+
+	int decay = calc_decay();
+	int this_recent_cpu = t->recent_cpu;
+	int this_nice = t->nice; 
+	//int this_recent_cpu = thread_get_recent_cpu();
+	//int this_nice = thread_get_nice();
+
+	int first = mult_fp(decay, this_recent_cpu);
+	
+	t->recent_cpu = add_mixed(first, this_nice);
+}
+
+void
+mlfqs_update_recent_cpu(void) {
+	struct list_elem* e;
+
+	//모든 스레드
+	if (!(list_empty(&ready_list))) {
+	//recalc threads in ready list 
+		for (e=list_begin(&ready_list) ; e!= list_end(&ready_list); e=list_next(e)) {
+			struct thread* t = list_entry(e, struct thread, elem);
+			update_recent_cpu(t);
+		}
+
+		list_sort(&ready_list, cmp_thread_priority, NULL);
+	}
+
+	if (!(list_empty(&sleep_list))) {
+
+		for(e=list_begin(&sleep_list); e!=list_end(&sleep_list); e=list_next(e)) {
+			struct thread* t = list_entry(e, struct thread, elem);
+			update_recent_cpu(t);
+		}
+
+		//list_sort (&sleep_list, cmp_thread_priority, NULL);
+	}
+
+	struct thread* curr = thread_current();
+	update_recent_cpu(curr);
+	
+}
+
+
+/* priority = PRI_MAX – (recent_cpu / 4) – (nice * 2) */
+
+// 4ticks 마다 recalculate 해야 함
+void
+mlfqs_priority(struct thread* t) {
+
+	if (t == idle_thread) {
+		return;
+	}
+
+	int this_recent_cpu = t->recent_cpu;
+	int this_nice = t->nice; 
+	// int this_recent_cpu = thread_get_recent_cpu();
+	// int this_nice = thread_get_nice();
+
+	int cnvted_4 = int_to_fp(4);
+
+	int first = div_mixed(this_recent_cpu, cnvted_4);
+	//int second = this_nice * 2;
+	int second =mult_mixed(this_nice, 2);
+
+	int cvted_minus_sums = mult_mixed(add_fp(first, second), -1);
+
+	int cvted_primax = PRI_MAX * (-1);
+
+	//int recalced_priority = PRI_MAX - first - second;
+
+	int recalced_priority = sub_mixed(cvted_minus_sums,cvted_primax);
+
+	t->priority = recalced_priority;
+
+}
+
+/* 
+priority = PRI_MAX – (recent_cpu / 4) – (nice * 2)
+For all threads, priority is recalculated once in every fourth clock tick 
+*/
+void
+mlfqs_recalc(void) {
+
+	//struct thread* t;
+	struct list_elem* e;
+
+	//recalc threads in ready list 
+
+	if (!(list_empty(&ready_list))) {
+		for ( e = list_begin(&ready_list) ; e != list_end(&ready_list); e = list_next(e) ) {
+		struct thread* t = list_entry(e, struct thread, elem);
+		mlfqs_priority(t);
+	}
+
+		list_sort(&ready_list, cmp_thread_priority, NULL);
+
+
+	}
+
+		if (!(list_empty(&sleep_list))) {
+
+		for(e=list_begin(&sleep_list); e!=list_end(&sleep_list); e=list_next(e)) {
+			struct thread* t = list_entry(e, struct thread, elem);
+			mlfqs_priority(t);
+		}
+
+		//list_sort (&sleep_list, cmp_thread_priority, NULL);
+	}
+	
+	struct thread* curr = thread_current();
+
+	mlfqs_priority(curr);
+
+
 }

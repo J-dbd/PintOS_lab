@@ -163,5 +163,13 @@ void awake_thread (int64_t ticks);
 bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 void thread_switch();
 
+///////////////// [project1-C]////////////////////////////
+void mlfqs_calc_load_avg(void);
+int calc_decay(void);
+void increase_recent_cpu(void);
+void update_recent_cpu(struct thread* t);
+void mlfqs_update_recent_cpu(void); 
+void mlfqs_priority(struct thread* t);
+void mlfqs_recalc();
 
 #endif /* threads/thread.h */

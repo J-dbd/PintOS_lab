@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <math.h>
+
 
 #define F (1 << 14)     //fixed point 1 
 #define INT_MAX ((1 << 31) - 1)
