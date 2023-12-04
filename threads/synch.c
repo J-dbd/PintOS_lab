@@ -514,6 +514,7 @@ cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem*
 }
 
 
+
 // [project1-B] 
 /*  <list_less_func *> for sorting list*/
 bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
@@ -523,3 +524,4 @@ bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem 
 
 	return a->priority > b->priority;
 }
+
