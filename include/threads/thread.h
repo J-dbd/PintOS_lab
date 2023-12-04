@@ -91,9 +91,21 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+
+	////////////// Project 1 ///////////////////
+	/* [project1-A] tag given sleepting time  */
+	int64_t sleeping_time;				
+	/* [ project1-B : Donation ] - priority donation */ 
+	struct lock* wait_on_lock; 
+	struct list donations; // 해당 thread가 lock의 holder일 때 lock을 요청하는 모든 threads를 저장
+	struct list_elem d_elem; 
+	int original_priority; //thread의 고유 priority를 저장
+	// [project1-C]
+	int recent_cpu;
+	int nice;
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -142,5 +154,21 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
+
+/////////////////////// Project 1 ///////////////////////
+// [project1-A] 
+void sleep_thread (int64_t waiting_time);
+void awake_thread (int64_t ticks);
+// [project1-B]
+bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
+void thread_switch();
+// [project1-C]
+void calc_load_avg(void);
+int calc_decay(void);
+void calc_priority(struct thread* t);
+void increase_recent_cpu(void);
+void update_recent_cpu(struct thread* t);
+void mlfqs_update_recent_cpu(void); 
+void mlfq_update_priority();
 
 #endif /* threads/thread.h */
