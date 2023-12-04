@@ -75,7 +75,7 @@ int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
-	intr_set_level (old_level);
+ 	intr_set_level (old_level);
 	barrier ();
 	return t;
 }
@@ -88,7 +88,13 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+/* TODO : queue를 활용? linux kernel park를 참고(JM's team)한 디자인*/
+
+// thread struct에 tick을 넣고 비교를 한다?
+
+
 void
+
 timer_sleep (int64_t ticks) { //[project1-A]
 
 	int64_t start = timer_ticks ();
@@ -98,10 +104,12 @@ timer_sleep (int64_t ticks) { //[project1-A]
 	enum intr_level old_level;
 	old_level = intr_disable ();
 
+
 	sleep_thread(sleep_time);
 	
 	//turn on interrupt from os(?)
 	intr_set_level (old_level);
+
 }
 
 
@@ -133,9 +141,54 @@ timer_print_stats (void) {
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
+	//printf("timer_interrupt\n");
 	ticks++;
 	awake_thread(ticks);
 	thread_tick ();
+
+	//[project1-C]
+
+	if (thread_mlfqs) {
+		/* In every clock tick, 
+		increase the running thread’s recent_cpu by one.*/
+		increase_recent_cpu();
+
+		/* 
+		In every second, 
+		update every thread’s recent_cpu
+
+		load_avg -> decay -> recent_cpu -> priority
+
+		*/ 
+		if (timer_ticks() % TIMER_FREQ == 0) {
+			//printf("---1 sec recompute ----\n");
+			calc_load_avg(); //load_avg 갱신
+			mlfqs_update_recent_cpu(); // recent_cpu 갱신
+
+		}
+
+		/*
+		every four ticks
+		recompute priority
+		모든 스레드
+
+		매 4tick마다 priority 계산
+		*/
+
+		if (timer_ticks() % 4 == 0) {
+			//printf("4 tick recompute ----\n");
+			mlfq_update_priority();
+			//thread_switch();
+		}
+
+		// if (timer_ticks() % TIMER_FREQ*10 == 0) {
+		// 	printf("10 sec recompute ----\n");
+			
+
+		// }
+
+	}
+	
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

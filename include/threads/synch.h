@@ -40,6 +40,11 @@ void cond_broadcast (struct condition *, struct lock *);
 
 
 
+void refresh_priority(void);
+void donate_priority(void);
+
+
+
 /* Optimization barrier.
  *
  * The compiler will not reorder operations across an
