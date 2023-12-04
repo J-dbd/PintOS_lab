@@ -39,9 +39,11 @@ void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
 
-void donate_priority(void);
-void remove_with_lock(struct lock *lock);
+
 void refresh_priority(void);
+void donate_priority(void);
+
+
 
 /* Optimization barrier.
  *

@@ -33,6 +33,12 @@
 #include "threads/thread.h"
 
 
+//[ project1-B : Donation ]
+void donate_priority(void);
+void remove_with_lock(struct lock *lock);
+void refresh_priority(void);
+bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) ;
+
 // [project1-B]
 bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
 
@@ -203,8 +209,57 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	struct thread* curr = thread_current();
+	struct thread* holder = lock->holder;
+
+	enum intr_level old_level;
+	old_level= intr_disable ();
+
+	if(holder){
+		curr->wait_on_lock = lock;
+		//list_insert_ordered(&holder->donations, &holder->d_elem, cmp_donation_priority, NULL);
+		list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
+		donate_priority();
+	}
+
 	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+	//curr->wait_on_lock = NULL;
+	lock->holder = curr; 
+	intr_set_level (old_level);
+}
+
+void donate_priority(void) {
+	struct thread* current_lholder = thread_current()->wait_on_lock->holder;
+
+	int max_priority = thread_current()->priority;
+	struct thread* lhder;
+
+	
+	for(lhder = current_lholder; (lhder->wait_on_lock)!= NULL; lhder = lhder->wait_on_lock->holder) {
+
+		//printf("current_lholder->pri : %d", lhder->priority);
+
+
+			if (lhder->priority > max_priority) {
+				max_priority = lhder->priority;
+			}
+
+			if (lhder->priority < max_priority) {
+				lhder->priority = max_priority;
+			}
+
+			// if (&(lhder->wait_on_lock)==NULL) {
+			// 	lhder = max_priority;
+			// }
+		}
+	
+	if(lhder!=NULL){
+		lhder->priority = max_priority;
+	}
+
+	current_lholder->priority = max_priority;
+
+
 }
 
 void donate_priority(void) {
@@ -237,13 +292,86 @@ lock_try_acquire (struct lock *lock) {
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
+
+   /* 
+   When the lock is released, 
+   remove the thread that holds the lock on donation list 
+   and set priority properly.
+   */
 void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
+	//interrupt OFF
+	enum intr_level old_level;
+	old_level= intr_disable ();
 
-	lock->holder = NULL;
+	remove_with_lock(lock);
+	refresh_priority();
+
 	sema_up (&lock->semaphore);
+	lock->holder = NULL; //lock 해지
+	
+
+	//interrupt ON
+	intr_set_level (old_level);
+}
+void remove_with_lock(struct lock *lock) {
+
+	struct thread* curr = thread_current();
+
+	// struct thread* holder = lock->holder;
+	// //holder의 priority를 복구
+	// holder->priority = holder->original_priority;
+
+	//struct list* donations = &holder->donations;
+	//struct list* donations = &holder->donations;
+
+	struct list* donations = &curr->donations;
+
+	if(list_empty(donations)) {
+	return;
+	}
+
+	struct list_elem* e;
+
+	for(e = list_begin(donations); e != list_end(donations); ){
+
+		struct thread* t = list_entry(e, struct thread, d_elem);
+
+		if (t->wait_on_lock == lock){
+			e = list_remove(e);
+			continue;
+
+		}
+
+		// if (e == list_tail(donations)){
+		// 	break;
+		// }
+		e = list_next(e);
+
+	}
+
+
+}
+
+void refresh_priority(void) {
+	struct thread* curr = thread_current();
+
+	int max_priority = curr->original_priority;
+
+	if(list_empty(&curr->donations) ==false){
+
+		//list_sort(&curr->donations, cmp_donation_priority, NULL);
+
+		int top_priority = list_entry(list_begin(&curr->donations), struct thread, d_elem)->priority;
+
+		if (top_priority > max_priority) {
+			max_priority = top_priority;
+		}
+	}
+	curr->priority = max_priority;
+	
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -388,10 +516,12 @@ cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem*
 	return left_top_thread->priority > right_top_thread->priority;
 }
 
-bool
-cmp_donation_priority(const struct list_elem* a_, const struct list_elem* b_, void *aux UNUSED) {
-	struct thread*  a = list_entry(a_, struct thread, delem);
-	struct thread*  b = list_entry(b_, struct thread, delem);
+
+// [project1-B] 
+/*  <list_less_func *> for sorting list*/
+bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
+	struct thread*  a = list_entry(a_, struct thread, d_elem);
+	struct thread*  b = list_entry(b_, struct thread, d_elem);
 	//printf("ap: %d , bp: %d\n", a->priority, b->priority);
 
 	return a->priority > b->priority;
