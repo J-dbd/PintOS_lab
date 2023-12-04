@@ -576,6 +576,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
 
+
 	//[ project1-B : Donation ]
 	/* initialize donation list & origianl priority */
 	list_init(&t->donations); 
