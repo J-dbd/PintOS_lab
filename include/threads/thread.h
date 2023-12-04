@@ -92,6 +92,7 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 	int64_t sleeping_time;				/* tag given sleepting time [project1-A]  */
+  
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	
