@@ -22,8 +22,10 @@
                 "--gdb",
                 "--",
                 "-q",
+                // "-mlfqs",
                 "run",
-                "${input:test}"
+                "${input:test}",
+                
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"

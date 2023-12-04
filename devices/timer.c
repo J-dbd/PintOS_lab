@@ -94,44 +94,25 @@ timer_elapsed (int64_t then) {
 
 
 void
-timer_sleep (int64_t ticks) {
-	//시작시점을 저장한다.
+
+timer_sleep (int64_t ticks) { //[project1-A]
+
 	int64_t start = timer_ticks ();
-	//종료될 시각을 저장한다. 
 	int64_t sleep_time = start + ticks;
-	//현재 스레드를 저장한다.
-	struct thread* current_thread = thread_current();
-		printf("[1] current_thread: %s\n", current_thread->name);	
 	
 	//interrupts should be turned off to call the function 'thread block'
 	enum intr_level old_level;
 	old_level = intr_disable ();
 
-	sleep_thread(current_thread, sleep_time);
-	ASSERT (intr_get_level () == INTR_ON);
 
+	sleep_thread(sleep_time);
+	
+	//turn on interrupt from os(?)
 	intr_set_level (old_level);
 
-
 }
-void timer_awake (int64_t ticks){
 
-	struct list_elem * p;
-	//sleep list를 순회 돌며 일어날 시간이 되는 thread를 탐색한다.
-	for(p=list_begin(&sleep_list); p!=list_end(&sleep_list);){
 
-		struct thread* sleeped_thread = list_entry(p,struct thread,elem);
-
-		if (sleeped_thread->sleeping_time > ticks){
-
-			thread_unblock(sleeped_thread);
-			pop_sleeping_list(sleeped_thread);
-			list_remove(p);
-			continue;
-			}
-		}
-		p=list_next(p);
-}
 
 /* Suspends execution for approximately MS milliseconds. */
 void
@@ -160,9 +141,54 @@ timer_print_stats (void) {
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
+	//printf("timer_interrupt\n");
 	ticks++;
+	awake_thread(ticks);
 	thread_tick ();
-	timer_awake(ticks);
+
+	//[project1-C]
+
+	if (thread_mlfqs) {
+		/* In every clock tick, 
+		increase the running thread’s recent_cpu by one.*/
+		increase_recent_cpu();
+
+		/* 
+		In every second, 
+		update every thread’s recent_cpu
+
+		load_avg -> decay -> recent_cpu -> priority
+
+		*/ 
+		if (timer_ticks() % TIMER_FREQ == 0) {
+			//printf("---1 sec recompute ----\n");
+			calc_load_avg(); //load_avg 갱신
+			mlfqs_update_recent_cpu(); // recent_cpu 갱신
+
+		}
+
+		/*
+		every four ticks
+		recompute priority
+		모든 스레드
+
+		매 4tick마다 priority 계산
+		*/
+
+		if (timer_ticks() % 4 == 0) {
+			//printf("4 tick recompute ----\n");
+			mlfq_update_priority();
+			//thread_switch();
+		}
+
+		// if (timer_ticks() % TIMER_FREQ*10 == 0) {
+		// 	printf("10 sec recompute ----\n");
+			
+
+		// }
+
+	}
+	
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
