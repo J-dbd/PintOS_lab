@@ -32,13 +32,18 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+
 //[ project1-B : Donation ]
 void donate_priority(void);
 void remove_with_lock(struct lock *lock);
 void refresh_priority(void);
 bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) ;
+
 // [project1-B]
 bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
+
+bool
+cmp_donation_priority(const struct list_elem* a_, const struct list_elem* b_, void *aux UNUSED);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -255,6 +260,11 @@ void donate_priority(void) {
 	current_lholder->priority = max_priority;
 
 
+}
+
+void donate_priority(void) {
+
+	
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -505,6 +515,7 @@ cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem*
 
 	return left_top_thread->priority > right_top_thread->priority;
 }
+
 
 // [project1-B] 
 /*  <list_less_func *> for sorting list*/

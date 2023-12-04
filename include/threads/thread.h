@@ -102,6 +102,11 @@ struct thread {
 	int original_priority; //thread의 고유 priority를 저장
 
 
+	struct list donations;
+	struct list_elem delem;
+	
+	int origin_priority;
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
