@@ -8,6 +8,9 @@
         "list.h": "c",
         "debug.h": "c",
         "interrupt.h": "c",
-        "random.h": "c"
+        "random.h": "c",
+        "process.h": "c",
+        "fixed_point.h": "c",
+        "flags.h": "c"
     }
 }

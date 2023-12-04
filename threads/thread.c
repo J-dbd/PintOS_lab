@@ -32,10 +32,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* List of processes in THREAD_BLOCKED state, that is, processes
-   that are sleeping.*/
-static struct list sleep_list; // [project1-A]
-
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -57,16 +53,32 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+//////////// Project 1 ////////////
+
+// [project1-A]
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are sleeping.*/
+static struct list sleep_list; 
+
+// [project1-C]
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
+
+/* The system load average, estimates the average number of threads ready to run over the past minute.
+   It is Exponentially Weighted Moving Average (EWMA) and system-wide range.
+   It related with calculating in "decay" recent_cpu.
+   
+   * EWMA analyze data points over a specific time period, with more recent data points receiving greater weight. */
+static int load_avg ;
+
+// set defaults
 #define NICE_DEFAULT 0
 #define RECENT_CPU_DEFAULT 0 
 #define LOAD_AVG_DEFAULT 0
 
-
-static bool value_less (const struct list_elem *, const struct list_elem *,void *); // [project1-B]
+//static bool value_less (const struct list_elem *, const struct list_elem *,void *); // [project1-B]
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -77,8 +89,7 @@ static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
 
-// [project1-C]
-static int load_avg ;
+
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -95,6 +106,8 @@ static int load_avg ;
 // Because the gdt will be setup after the thread_init, we should
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
+
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -239,10 +252,16 @@ thread_create (const char *name, int priority,
 }
 
 // [project1-B]
-void thread_switch() {
-	/* ready list 가 비어있다면, idle thread인 경우이고
-	   이럴 때에는 switch 할 필요가 없다. */
-	if (list_empty(&ready_list)){ //idle thread인 경우 이게 필요 없음
+/* If the first thread of ready list's priority is higher than 
+   priority of current running thread, the current thread 
+   yield CPU to that thread. 
+   
+   Function for context switching [project1-B]*/
+void 
+thread_switch() {
+	/*  If ready list is empty, the current thread is idle thread
+	so that we don't need to switch thread. */
+	if (list_empty(&ready_list)){ 
 		return;
 	}
 
@@ -288,7 +307,7 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	//list_push_back (&ready_list, &t->elem);
+
 	list_insert_ordered(&ready_list, &t->elem, cmp_thread_priority, NULL); // [project1-B]
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
@@ -395,7 +414,7 @@ void
 thread_set_priority (int new_priority) {
 
 	struct thread* curr = thread_current ();
-
+	// [ project1-B : Donation ]
 	if(! thread_mlfqs) {
 		if (curr->priority == curr->original_priority) {
 		curr->priority = new_priority;
@@ -427,7 +446,6 @@ thread_get_priority (void) {
    3) If the running thread no longer has the highest priority, yields. */
 void
 thread_set_nice (int nice UNUSED) {
-	/* TODO: Your implementation goes here */
 	// interrupt off needed 
 
 	struct thread* curr = thread_current();
@@ -436,7 +454,7 @@ thread_set_nice (int nice UNUSED) {
 	old_level = intr_disable ();
 
 	curr->nice = nice;
-	// mlfqs_priority(curr);
+	// calc_priority(curr);
 	//thread_switch();
 
 	thread_switch();
@@ -461,7 +479,6 @@ thread_get_nice (void) {
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
-	/* TODO: Your implementation goes here */
 	// return mult_mixed(load_avg, 100);
 	//return load_avg * 100;
 
@@ -483,7 +500,6 @@ thread_get_load_avg (void) {
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) {
-	/* TODO: Your implementation goes here */
 	struct thread* curr = thread_current();
 	enum intr_level old_level;
 	old_level = intr_disable ();
@@ -754,6 +770,8 @@ allocate_tid (void) {
 	return tid;
 }
 
+////////////// Project 1 ///////////////
+
 // [project1-B] 
 /*  <list_less_func *> for sorting list*/
 bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
@@ -764,11 +782,9 @@ bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b
 	return a->priority > b->priority;
 }
 
-
-// [project1-C] /////////////////////////////
-
+// [project1-C] 
 void
-mlfqs_calc_load_avg(void) {
+calc_load_avg(void) {
 	int cvted_59 = int_to_fp(59);
 	int cvted_60 = int_to_fp(60);
 	int cvted_1 = int_to_fp(1);
@@ -788,8 +804,6 @@ mlfqs_calc_load_avg(void) {
 	int back = mult_mixed(back_frac, num_rdyths);
 
 	load_avg = add_fp(front, back);
-
-	//printf("load_avg: %d \n",load_avg);
 
 }
 /* calculate decay for recent_cpu
@@ -812,11 +826,11 @@ increase_recent_cpu(void) {
 
 	struct thread* t = thread_current();
 	
+	/* If the last t from the ready list is idle thread, 
+	it means searching the list is done.*/
 	if (t == idle_thread) {
 		 return;
 	}
-
-	//t->recent_cpu ++;
 	
 	int curr_recent_cpu = t->recent_cpu;
 	int incresed_recent = add_mixed(curr_recent_cpu, 1);
@@ -826,8 +840,9 @@ increase_recent_cpu(void) {
 	int forchecking;
 }
 
-/* decay and adjust in every second
-   get thread as param
+/* Update a thread.
+   Decay and adjust in every second
+   Get thread as a param.
 
    recent_cpu = decay * recent_cpu + nice,
    */
@@ -849,21 +864,23 @@ update_recent_cpu(struct thread* t) {
 	t->recent_cpu = add_mixed(first, this_nice);
 }
 
+/*
+Update all thread.
+*/
 void
 mlfqs_update_recent_cpu(void) {
 	struct list_elem* e;
-
-	//모든 스레드
+	//(1) ready list
 	if (!(list_empty(&ready_list))) {
 	//recalc threads in ready list 
 		for (e=list_begin(&ready_list) ; e!= list_end(&ready_list); e=list_next(e)) {
 			struct thread* t = list_entry(e, struct thread, elem);
-			update_recent_cpu(t);
+			update_recent_cpu(t); //update
 		}
 
 		list_sort(&ready_list, cmp_thread_priority, NULL);
 	}
-
+	//(2) sleep list
 	if (!(list_empty(&sleep_list))) {
 
 		for(e=list_begin(&sleep_list); e!=list_end(&sleep_list); e=list_next(e)) {
@@ -873,82 +890,70 @@ mlfqs_update_recent_cpu(void) {
 
 		//list_sort (&sleep_list, cmp_thread_priority, NULL);
 	}
-
+	//(3) current list
 	struct thread* curr = thread_current();
-	update_recent_cpu(curr);
-	
+	update_recent_cpu(curr);//update
 }
 
 
-/* priority = PRI_MAX – (recent_cpu / 4) – (nice * 2) */
-
-// 4ticks 마다 recalculate 해야 함
+/*
+Update by 4 ticks 
+priority = PRI_MAX – (recent_cpu / 4) – (nice * 2) */
 void
-mlfqs_priority(struct thread* t) {
+calc_priority(struct thread* t) {
 
 	if (t == idle_thread) {
 		return;
 	}
-
+	
 	int this_recent_cpu = t->recent_cpu;
 	int this_nice = t->nice; 
-	// int this_recent_cpu = thread_get_recent_cpu();
-	// int this_nice = thread_get_nice();
 
+	// (recent_cpu / 4)
 	int cnvted_4 = int_to_fp(4);
-
 	int first = div_mixed(this_recent_cpu, cnvted_4);
-	//int second = this_nice * 2;
+	// (nice * 2)
 	int second =mult_mixed(this_nice, 2);
 
 	int cvted_minus_sums = mult_mixed(add_fp(first, second), -1);
-
 	int cvted_primax = PRI_MAX * (-1);
-
-	//int recalced_priority = PRI_MAX - first - second;
-
 	int recalced_priority = sub_mixed(cvted_minus_sums,cvted_primax);
 
 	t->priority = recalced_priority;
-
 }
 
 /* 
+For all threads, priority is recalculated once in every fourth clock tick 
 priority = PRI_MAX – (recent_cpu / 4) – (nice * 2)
 For all threads, priority is recalculated once in every fourth clock tick 
 */
 void
-mlfqs_recalc(void) {
+mlfq_update_priority(void) {
 
 	//struct thread* t;
 	struct list_elem* e;
 
-	//recalc threads in ready list 
-
+	//(1) ready list
 	if (!(list_empty(&ready_list))) {
 		for ( e = list_begin(&ready_list) ; e != list_end(&ready_list); e = list_next(e) ) {
 		struct thread* t = list_entry(e, struct thread, elem);
-		mlfqs_priority(t);
-	}
-
+		calc_priority(t);
+		}
 		list_sort(&ready_list, cmp_thread_priority, NULL);
 
 
 	}
-
-		if (!(list_empty(&sleep_list))) {
-
+	//(2) sleep list
+	if (!(list_empty(&sleep_list))) {
 		for(e=list_begin(&sleep_list); e!=list_end(&sleep_list); e=list_next(e)) {
 			struct thread* t = list_entry(e, struct thread, elem);
-			mlfqs_priority(t);
+			calc_priority(t);
 		}
 
 		//list_sort (&sleep_list, cmp_thread_priority, NULL);
 	}
-	
+	//(3) current thread
 	struct thread* curr = thread_current();
 
-	mlfqs_priority(curr);
-
-
+	calc_priority(curr);
 }

@@ -153,7 +153,7 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 		*/ 
 		if (timer_ticks() % TIMER_FREQ == 0) {
 			//printf("---1 sec recompute ----\n");
-			mlfqs_calc_load_avg(); //load_avg 갱신
+			calc_load_avg(); //load_avg 갱신
 			mlfqs_update_recent_cpu(); // recent_cpu 갱신
 
 		}
@@ -168,7 +168,7 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 
 		if (timer_ticks() % 4 == 0) {
 			//printf("4 tick recompute ----\n");
-			mlfqs_recalc();
+			mlfq_update_priority();
 			//thread_switch();
 		}
 

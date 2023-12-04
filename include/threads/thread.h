@@ -156,20 +156,20 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-///////////////// [project1-A] ////////////////////////////
+/////////////////////// Project 1 ///////////////////////
+// [project1-A] 
 void sleep_thread (int64_t waiting_time);
 void awake_thread (int64_t ticks);
-///////////////// [project1-B] ////////////////////////////
+// [project1-B]
 bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 void thread_switch();
-
-///////////////// [project1-C]////////////////////////////
-void mlfqs_calc_load_avg(void);
+// [project1-C]
+void calc_load_avg(void);
 int calc_decay(void);
+void calc_priority(struct thread* t);
 void increase_recent_cpu(void);
 void update_recent_cpu(struct thread* t);
 void mlfqs_update_recent_cpu(void); 
-void mlfqs_priority(struct thread* t);
-void mlfqs_recalc();
+void mlfq_update_priority();
 
 #endif /* threads/thread.h */

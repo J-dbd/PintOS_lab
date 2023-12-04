@@ -1,9 +1,7 @@
 #include <stdio.h>
 
-
 #define F (1 << 14)     //fixed point 1 
-#define INT_MAX ((1 << 31) - 1)
-#define INT_MIN (-(1 << 31))
+
 // x and y denote fixed_point numbers in 17.14 format 
 // n is an integer
 
