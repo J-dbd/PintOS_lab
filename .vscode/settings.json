@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "palloc.h": "c"
+        "*html": "html",
+        "*njk": "html",
+        "thread.h": "c",
+        "timer.h": "c",
+        "round.h": "c",
+        "list.h": "c"
     }
 }

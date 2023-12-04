@@ -95,6 +95,11 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	struct list donations;
+	struct list_elem delem;
+	
+	int origin_priority;
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -144,10 +149,11 @@ int thread_get_load_avg (void);
 void do_iret (struct intr_frame *tf);
 
 ///////////////// [project1-A] ////////////////////////////
-static struct list sleep_list;
-void sleep_thread(int64_t waiting_time);
-void awake_thread(int64_t ticks);
-//////////////////////////////////////////////////////////
+void sleep_thread (int64_t waiting_time);
+void awake_thread (int64_t ticks);
+///////////////// [project1-B] ////////////////////////////
+bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
+void thread_switch();
 
 
 #endif /* threads/thread.h */
