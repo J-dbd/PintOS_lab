@@ -75,7 +75,7 @@ int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
 	int64_t t = ticks;
- 	intr_set_level (old_level);
+	intr_set_level (old_level);
 	barrier ();
 	return t;
 }
@@ -88,13 +88,7 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
-/* TODO : queue를 활용? linux kernel park를 참고(JM's team)한 디자인*/
-
-// thread struct에 tick을 넣고 비교를 한다?
-
-
 void
-
 timer_sleep (int64_t ticks) { //[project1-A]
 
 	int64_t start = timer_ticks ();
@@ -104,12 +98,10 @@ timer_sleep (int64_t ticks) { //[project1-A]
 	enum intr_level old_level;
 	old_level = intr_disable ();
 
-
 	sleep_thread(sleep_time);
 	
 	//turn on interrupt from os(?)
 	intr_set_level (old_level);
-
 }
 
 
@@ -145,7 +137,6 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	awake_thread(ticks);
 	thread_tick ();
-
 	//[project1-C]
 
 	if (thread_mlfqs) {

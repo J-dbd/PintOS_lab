@@ -32,12 +32,7 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* Running 상태에서 일시정지되어 잠든, blocked 된 process/thread를 넣어 두는 list
-timer_asleep()에서 사용된다.*/
-static struct list sleep_list; 
-
 /* Idle thread. */
-//어떤 프로세스에서도 실행되고 있지 않은 스레드
 static struct thread *idle_thread;
 
 /* Initial thread, the thread running init.c:main(). */
@@ -145,7 +140,6 @@ thread_init (void) {
 	list_init (&ready_list);
 	list_init (&destruction_req);
 	list_init (&sleep_list); // [project1-A]
-
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
 	init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -291,44 +285,11 @@ thread_switch() {
    primitives in synch.h. */
 void
 thread_block (void) {
-	
 	ASSERT (!intr_context ());
 	ASSERT (intr_get_level () == INTR_OFF);
 	thread_current ()->status = THREAD_BLOCKED;
 	schedule ();
-
 }
-
-void push_sleeping_list(struct thread* target){
-	if (target != idle_thread)
-	list_push_back(&sleep_list, &target->elem);
-}
-
-void pop_sleeping_list(struct thread* target){
-	if(target!=idle_thread)
-	list_push_front(&sleep_list, &target->elem);
-}
-
-void sleep_thread(struct thread* target, int64_t waiting_time){
-
-	target->sleeping_time = waiting_time;
-		printf("[2] CT's tick setting: %d\n", target->sleeping_time);
-
-	thread_block();
-
-	push_sleeping_list(target);
-		printf("[3] blocked_thread status = %s\n", target->status);
-	
-	
-
-
-
-}
-// ///////////////////
-// void adding_sleep_list(struct thread* target){
-// 	list_push_back(&sleep_list, &target->elem);
-// }
-// ///////////////////
 
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
@@ -493,9 +454,6 @@ thread_set_nice (int nice UNUSED) {
 	old_level = intr_disable ();
 
 	curr->nice = nice;
-	// calc_priority(curr);
-	//thread_switch();
-
 	thread_switch();
 
 	intr_set_level (old_level);
@@ -518,22 +476,16 @@ thread_get_nice (void) {
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) {
-	// return mult_mixed(load_avg, 100);
-	//return load_avg * 100;
 
 	enum intr_level old_level;
 	old_level = intr_disable ();
 
-
 	int load_avg100 = mult_mixed(load_avg, 100);
 	load_avg100 = fp_to_int(load_avg100);
-	//int res = fp_to_int(load_avg100);
 
 	intr_set_level (old_level);
 
 	return load_avg100;
-	
-
 }
 // [project1-C]
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -543,7 +495,6 @@ thread_get_recent_cpu (void) {
 	enum intr_level old_level;
 	old_level = intr_disable ();
 	
-
 	int recent_cpu100 = mult_mixed(curr->recent_cpu, 100);
 	recent_cpu100 = fp_to_int(recent_cpu100);
 
@@ -746,7 +697,6 @@ thread_launch (struct thread *th) {
  * This function modify current thread's status to status and then
  * finds another thread to run and switches to it.
  * It's not safe to call printf() in the schedule(). */
-/* TODO : keyword의 마지막 그거로 구현 해야 함 */
 static void
 do_schedule(int status) {
 	ASSERT (intr_get_level () == INTR_OFF);
@@ -811,7 +761,6 @@ allocate_tid (void) {
 	return tid;
 }
 
-
 ////////////// Project 1 ///////////////
 
 // [project1-B] 
@@ -819,7 +768,6 @@ allocate_tid (void) {
 bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
 	struct thread*  a = list_entry(a_, struct thread, elem);
 	struct thread*  b = list_entry(b_, struct thread, elem);
-	//printf("ap: %d , bp: %d\n", a->priority, b->priority);
 
 	return a->priority > b->priority;
 }
@@ -862,7 +810,6 @@ calc_decay(void) {
 
 }
 /* Increase the recent_cpu of the currently running process by 1 in every timer interrupt*/
-// 함수로 빼지 않아도 될 것 같음
 void
 increase_recent_cpu(void) {
 

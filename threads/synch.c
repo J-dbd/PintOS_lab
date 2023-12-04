@@ -131,9 +131,7 @@ sema_up (struct semaphore *sema) {
 	sema->value++;
 	intr_set_level (old_level);
 	// [project1-B]
-	//pass tests/threads/priority-donate-sema
 	thread_switch();
-	//thread_yield();
 }
 
 static void sema_test_helper (void *sema_);
@@ -217,7 +215,6 @@ lock_acquire (struct lock *lock) {
 	if(! thread_mlfqs) {
 
 		//[ project1-B : donation ]
-
 		if(holder){
 			curr->wait_on_lock = lock;
 			list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
@@ -256,11 +253,6 @@ void donate_priority(void) {
 	current_lholder->priority = max_priority;
 
 
-}
-
-void donate_priority(void) {
-
-	
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -514,14 +506,10 @@ cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem*
 }
 
 
-
 // [project1-B] 
 /*  <list_less_func *> for sorting list*/
 bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) {
 	struct thread*  a = list_entry(a_, struct thread, d_elem);
 	struct thread*  b = list_entry(b_, struct thread, d_elem);
-	//printf("ap: %d , bp: %d\n", a->priority, b->priority);
-
 	return a->priority > b->priority;
 }
-
