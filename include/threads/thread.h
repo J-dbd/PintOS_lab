@@ -101,6 +101,12 @@ struct thread {
 	struct list_elem d_elem; 
 	int original_priority; //thread의 고유 priority를 저장
 
+	// [project1-C]
+	int recent_cpu;
+	int nice;
+
+
+
 
 	struct list donations;
 	struct list_elem delem;
@@ -155,12 +161,20 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-///////////////// [project1-A] ////////////////////////////
+/////////////////////// Project 1 ///////////////////////
+// [project1-A] 
 void sleep_thread (int64_t waiting_time);
 void awake_thread (int64_t ticks);
-///////////////// [project1-B] ////////////////////////////
+// [project1-B]
 bool cmp_thread_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 void thread_switch();
-
+// [project1-C]
+void calc_load_avg(void);
+int calc_decay(void);
+void calc_priority(struct thread* t);
+void increase_recent_cpu(void);
+void update_recent_cpu(struct thread* t);
+void mlfqs_update_recent_cpu(void); 
+void mlfq_update_priority();
 
 #endif /* threads/thread.h */

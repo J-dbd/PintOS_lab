@@ -33,14 +33,15 @@
 #include "threads/thread.h"
 
 
-//[ project1-B : Donation ]
+
+// [project1-B]
+bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
+//[ project1-B : donation ]
 void donate_priority(void);
 void remove_with_lock(struct lock *lock);
 void refresh_priority(void);
 bool cmp_donation_priority (const struct  list_elem *a_, const struct list_elem *b_, void *aux UNUSED) ;
 
-// [project1-B]
-bool cmp_sem_priority (const struct list_elem* lft_sema_elem, const struct list_elem* rght_sema_elem, void *aux UNUSED);
 
 bool
 cmp_donation_priority(const struct list_elem* a_, const struct list_elem* b_, void *aux UNUSED);
@@ -80,9 +81,7 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 
 	while (sema->value == 0) {
-		//list_push_back (&sema->waiters, &thread_current ()->elem); 
 		list_insert_ordered(&sema->waiters, &thread_current ()->elem, cmp_thread_priority, NULL); // [project1-B]
-
 		thread_block ();
 	}
 	sema->value--;
@@ -212,22 +211,26 @@ lock_acquire (struct lock *lock) {
 	struct thread* curr = thread_current();
 	struct thread* holder = lock->holder;
 
-	enum intr_level old_level;
-	old_level= intr_disable ();
+	enum intr_level old_level; //
+	old_level= intr_disable (); //
 
-	if(holder){
-		curr->wait_on_lock = lock;
-		//list_insert_ordered(&holder->donations, &holder->d_elem, cmp_donation_priority, NULL);
-		list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
-		donate_priority();
+	if(! thread_mlfqs) {
+
+		//[ project1-B : donation ]
+
+		if(holder){
+			curr->wait_on_lock = lock;
+			list_insert_ordered(&holder->donations, &curr->d_elem, cmp_donation_priority, NULL);
+			donate_priority();
+		}
 	}
 
 	sema_down (&lock->semaphore);
-	//curr->wait_on_lock = NULL;
-	lock->holder = curr; 
-	intr_set_level (old_level);
+	lock->holder = curr;
+	intr_set_level (old_level); //
 }
 
+//[ project1-B : donation ]
 void donate_priority(void) {
 	struct thread* current_lholder = thread_current()->wait_on_lock->holder;
 
@@ -237,9 +240,6 @@ void donate_priority(void) {
 	
 	for(lhder = current_lholder; (lhder->wait_on_lock)!= NULL; lhder = lhder->wait_on_lock->holder) {
 
-		//printf("current_lholder->pri : %d", lhder->priority);
-
-
 			if (lhder->priority > max_priority) {
 				max_priority = lhder->priority;
 			}
@@ -247,10 +247,6 @@ void donate_priority(void) {
 			if (lhder->priority < max_priority) {
 				lhder->priority = max_priority;
 			}
-
-			// if (&(lhder->wait_on_lock)==NULL) {
-			// 	lhder = max_priority;
-			// }
 		}
 	
 	if(lhder!=NULL){
@@ -303,18 +299,19 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 	//interrupt OFF
-	enum intr_level old_level;
-	old_level= intr_disable ();
+	enum intr_level old_level;//
+	old_level= intr_disable ();//
 
-	remove_with_lock(lock);
-	refresh_priority();
+	if(! thread_mlfqs) {
+		remove_with_lock(lock);
+		refresh_priority();
+	}
 
 	sema_up (&lock->semaphore);
 	lock->holder = NULL; //lock 해지
 	
-
 	//interrupt ON
-	intr_set_level (old_level);
+	intr_set_level (old_level);//
 }
 void remove_with_lock(struct lock *lock) {
 
