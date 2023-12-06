@@ -27,6 +27,10 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
+char* load_on_user_stack(const char *file_name, struct intr_frame *if_); 
+
+
+
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -178,11 +182,15 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
+	
+
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
+
+	hex_dump(_if.rsp, _if.rsp, USER_STACK-_if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -204,6 +212,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while(1); //무조건 끝나니까 
 	return -1;
 }
 
@@ -316,6 +325,9 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
 		bool writable);
 
+
+
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
  * Stores the executable's entry point into *RIP
  * and its initial stack pointer into *RSP.
@@ -328,6 +340,12 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
+
+	
+	//printf("loading start...\n");
+	//mk_token(file_name, if_);
+	//hex_dump(if_->rsp, if_->rsp, USER_STACK-if_->rsp, true);
+	
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
@@ -416,6 +434,15 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	
+	
+
+	load_on_user_stack(file_name, if_);
+ 	
+	 //const char *file_name
+
+	printf("rsp_address: %p\n", if_->rsp);
+	
 
 	success = true;
 
@@ -569,6 +596,72 @@ install_page (void *upage, void *kpage, bool writable) {
 	return (pml4_get_page (t->pml4, upage) == NULL
 			&& pml4_set_page (t->pml4, upage, kpage, writable));
 }
+
+/* return passed argument data, inserting address(1) and address(2) into the user_stack */
+char* 
+load_on_user_stack(const char *file_name, struct intr_frame *if_) {
+
+
+	///////////////////////////[ 1. make array by tokenization]
+
+	//변수 선언
+	char* token;
+	char* save_ptr;
+	int i;
+
+	int argc = 0; 
+	char* argv[128]; //token 의 주소(char* token)가 담기는 char 포인터 변수
+
+	// copy string for converting(\0);
+	char* filename_cpy = (char*)memset(filename_cpy, 0, strlen(file_name) + 1);
+	memcpy(filename_cpy, file_name, strlen(file_name) + 1); //복사 함
+
+	//순회 돌며 token저장
+	for (token = strtok_r(filename_cpy, " ", &save_ptr); token != NULL; 
+								token = strtok_r(NULL, " ", &save_ptr)) {
+		argv[argc++] = token; // return 할 배열에 token 삽입
+	}
+
+	///////////////////// [ 2. get token(char*) insert user stack by moving user stack pointer(rsp)  
+	
+	//순회 돌며 rsp를 이동시키며 token으로 자른 데이터의 주소를 넣어 준다.
+	for (i=argc-1; i >= 0; i--) {
+		if_->rsp -=strlen(argv[i]) +1; //+1?
+		memcpy(if_->rsp, argv[i], strlen(argv[i]) + 1);
+		argv[i] = if_->rsp;// 
+	}
+
+	///////////////////// [ 3. set word_align as 8 ]
+	uint8_t word_align = NULL;
+	while(if_->rsp % 8 != 0) {
+		if_->rsp --;
+	}
+
+	///////////////// [ 4. handling bonus argv[argc] ]
+	
+	//moving pointer
+	if_->rsp -= sizeof(char*);
+	memset(if_->rsp, NULL, sizeof(char*));
+
+
+	////////////// [ 5. insert token's address of user stack into user stack... ] 
+	for (i = argc -1; i >= 0; i--) {
+		if_->rsp -= sizeof(char*);
+		memcpy(if_->rsp, &(argv[i]), sizeof(char*));
+		printf("saved rsp : %p\n", (void*)(if_->rsp));
+	}
+
+	//////////////// [ 6. return addr ]
+		if_->R.rdi = argc;
+	if_->R.rsi = if_->rsp;
+
+	if_->rsp -= sizeof(void*());// return address
+
+	
+	return argv;
+}
+
+
 #else
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the

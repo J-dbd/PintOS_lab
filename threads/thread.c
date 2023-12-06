@@ -271,7 +271,7 @@ thread_switch() {
 	int new_priority = ready_front->priority; 
 	int current_priority = thread_get_priority();
 
-	if (new_priority > current_priority){
+	if (!intr_context() && new_priority > current_priority){
 		//donate_priority();
 		thread_yield();
 	}

@@ -1,2 +1,5 @@
-threads/build/
+#personal
 memo
+#build files
+threads/build/
+userprog/build/

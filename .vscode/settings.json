@@ -2,7 +2,6 @@
     "files.associations": {
         "*html": "html",
         "*njk": "html",
-
         "thread.h": "c",
         "timer.h": "c",
         "round.h": "c",
@@ -12,7 +11,15 @@
         "random.h": "c",
         "process.h": "c",
         "fixed_point.h": "c",
-        "flags.h": "c"
-
+        "flags.h": "c",
+        "*.inc": "c",
+        "io.h": "c",
+        "synch.h": "c",
+        "gdt.h": "c",
+        "tss.h": "c",
+        "mmu.h": "c",
+        "vaddr.h": "c",
+        "inttypes.h": "c",
+        "directory.h": "c"
     }
 }
