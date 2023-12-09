@@ -228,7 +228,21 @@ thread_create (const char *name, int priority,
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
-	////////////////// temp //////////////////
+	////////////// project 2 /////////////////
+	//Allocate File Descriptor table
+	t->fdt = palloc_get_page(PAL_ZERO);
+	//Reserve fd0, fd1 for stdin and stdout
+	t->next_fd = 3;
+	//Initialize pointer to file descriptor table.
+
+
+	
+	
+
+
+
+
+	////////////////// temp - hierarchy //////////////////
 	list_push_back(&thread_current()->child_list, &t->child_elem);
 
 	/* Call the kernel_thread if it scheduled.
@@ -390,6 +404,12 @@ thread_exit (void) {
 	process_exit ();
 	
 #endif
+	/* Close all files. */
+	//
+	/* Deallocate the file descriptor table. */
+	//palloc_free_page(thread_current()->fdt);
+
+	/// temp - hierarchy ///
     sema_up(&thread_current()->wait_sema);
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */

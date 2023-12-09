@@ -111,13 +111,17 @@ struct thread {
 	//struct file **fdt[64];
 	struct file **fdt; // file descriptor table //
 	int next_fd; // file descriptor index //
+	int exit_status;
 
 	/////////// Project 2 ////////////////
+	///////////temp - hierarchy /////////////////
 	struct list child_list;
 	struct list_elem child_elem;
 	struct semaphore wait_sema;
+	//////////////////////////////////
 
-	int exit_status;
+
+	
 
 
 
