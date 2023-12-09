@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -105,6 +106,20 @@ struct thread {
 	// [project1-C]
 	int recent_cpu;
 	int nice;
+
+	//////////// Project 2 /////////////////////
+	//struct file **fdt[64];
+	struct file **fdt; // file descriptor table //
+	int next_fd; // file descriptor index //
+
+	/////////// Project 2 ////////////////
+	struct list child_list;
+	struct list_elem child_elem;
+	struct semaphore wait_sema;
+
+	int exit_status;
+
+
 
 
 #ifdef USERPROG

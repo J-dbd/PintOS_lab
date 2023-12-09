@@ -34,11 +34,11 @@
                 "-T", "60000",
                 "-m", "20",
                 "--fs-disk=10",
-                "-p", "tests/userprog/args-none:args-none",
+                "-p", "tests/userprog/args-multiple:args-multiple",
                 "--",
                 "-q",
                 "-f", "run",
-                "args-none"
+                "args-multiple"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"

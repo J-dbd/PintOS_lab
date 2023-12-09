@@ -28,7 +28,7 @@ static void initd (void *f_name);
 static void __do_fork (void *);
 
 char* load_on_user_stack(const char *file_name, struct intr_frame *if_); 
-
+void get_tokenized_chars(const char *file_name, char* argv);
 
 
 /* General process initializer for initd and other process. */
@@ -190,7 +190,7 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-	hex_dump(_if.rsp, _if.rsp, USER_STACK-_if.rsp, true);
+	//hex_dump(_if.rsp, _if.rsp, USER_STACK-_if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -212,8 +212,19 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while(1); //무조건 끝나니까 
-	return -1;
+	//while(1); //무조건 끝나니까 
+	// for (int i = 0; i<100000000; i++){}
+	// return -1;
+	struct thread* child;
+	if (!(child = get_child_thread(child_tid))) {
+		return -1;
+	}
+	sema_down(&child->wait_sema);
+	list_remove(&child->child_elem);
+	//int exit_status = child->exit_status;
+	//return exit_status;
+
+	return 0;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -341,11 +352,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
-	
-	//printf("loading start...\n");
-	//mk_token(file_name, if_);
-	//hex_dump(if_->rsp, if_->rsp, USER_STACK-if_->rsp, true);
-	
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
@@ -353,8 +359,21 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	process_activate (thread_current ());
 
+	/* get the first argument : filename
+	 from :process_create_initd */
+	char* fn_cpy = palloc_get_page (0);
+	if (fn_cpy == NULL)
+		return TID_ERROR;
+	memcpy(fn_cpy, file_name, PGSIZE);
+	// 차이점?
+	//char* fn_cpy = (char*)memset(fn_cpy, 0, strlen(file_name) + 1);
+	//memcpy(fn_cpy, file_name, strlen(file_name)+1);
+	
+	char* save_ptr;
+
 	/* Open executable file. */
-	file = filesys_open (file_name);
+	//file = filesys_open (file_name);
+	file = filesys_open (strtok_r(fn_cpy, " ", &save_ptr));
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -441,7 +460,7 @@ load (const char *file_name, struct intr_frame *if_) {
  	
 	 //const char *file_name
 
-	printf("rsp_address: %p\n", if_->rsp);
+	//printf("rsp_address: %p\n", (if_->rsp);
 	
 
 	success = true;
@@ -597,10 +616,32 @@ install_page (void *upage, void *kpage, bool writable) {
 			&& pml4_set_page (t->pml4, upage, kpage, writable));
 }
 
+
+void
+get_tokenized_chars(const char *file_name, char* argv) {
+	char* token;
+	char* save_ptr;
+	char* filename_cpy;
+
+	int argc = 0;
+	
+	filename_cpy = (char*)memset(filename_cpy, 0, strlen(file_name) + 1);
+	memcpy(filename_cpy, file_name, strlen(file_name) + 1); //복사 함
+
+	//순회 돌며 token저장
+	for (token = strtok_r(filename_cpy, " ", &save_ptr); token != NULL; 
+								token = strtok_r(NULL, " ", &save_ptr)) {
+		argv[argc++] = token; // return 할 배열에 token 삽입
+	}
+
+	return argc;
+
+}
+
+
 /* return passed argument data, inserting address(1) and address(2) into the user_stack */
 char* 
 load_on_user_stack(const char *file_name, struct intr_frame *if_) {
-
 
 	///////////////////////////[ 1. make array by tokenization]
 
@@ -634,6 +675,7 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	///////////////////// [ 3. set word_align as 8 ]
 	uint8_t word_align = NULL;
 	while(if_->rsp % 8 != 0) {
+		memset(if_->rsp, NULL, sizeof(uint8_t));
 		if_->rsp --;
 	}
 
@@ -648,11 +690,11 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	for (i = argc -1; i >= 0; i--) {
 		if_->rsp -= sizeof(char*);
 		memcpy(if_->rsp, &(argv[i]), sizeof(char*));
-		printf("saved rsp : %p\n", (void*)(if_->rsp));
+		//printf("saved rsp : %p\n", (void*)(if_->rsp));
 	}
 
 	//////////////// [ 6. return addr ]
-		if_->R.rdi = argc;
+	if_->R.rdi = argc;
 	if_->R.rsi = if_->rsp;
 
 	if_->rsp -= sizeof(void*());// return address
