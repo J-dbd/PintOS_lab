@@ -60,7 +60,7 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	printf ("system call!\n");
+	//printf ("system call!\n");
 	
 
 	int syscall_num = f->R.rax;
@@ -151,7 +151,7 @@ exit(int status) {
 		curr->exit_status = list_entry(list_front(&curr->child_list), struct thread, child_elem)->exit_status;
 	}
 	/* save exit status at process descriptor */
-	printf("process %s : exit(%d)\n",curr->name, status);
+	printf("%s: exit(%d)\n",curr->name, status);
 	thread_exit();
 }
 

@@ -38,7 +38,7 @@
                 "--",
                 "-q",
                 "-f", "run",
-                "args-multiple"
+                "args-multiple some arguments for you!"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"

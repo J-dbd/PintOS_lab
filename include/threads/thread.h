@@ -186,4 +186,7 @@ void update_recent_cpu(struct thread* t);
 void mlfqs_update_recent_cpu(void); 
 void mlfq_update_priority();
 
+////////////////// project 2 //////////////////
+struct thread* get_child_thread(tid_t tid);
+
 #endif /* threads/thread.h */

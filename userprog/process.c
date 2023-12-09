@@ -221,10 +221,10 @@ process_wait (tid_t child_tid UNUSED) {
 	}
 	sema_down(&child->wait_sema);
 	list_remove(&child->child_elem);
-	//int exit_status = child->exit_status;
-	//return exit_status;
+	int exit_status = child->exit_status;
+	return exit_status;
 
-	return 0;
+	//return 0;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -361,19 +361,29 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* get the first argument : filename
 	 from :process_create_initd */
+
+
 	char* fn_cpy = palloc_get_page (0);
 	if (fn_cpy == NULL)
 		return TID_ERROR;
 	memcpy(fn_cpy, file_name, PGSIZE);
+
+	
 	// 차이점?
 	//char* fn_cpy = (char*)memset(fn_cpy, 0, strlen(file_name) + 1);
 	//memcpy(fn_cpy, file_name, strlen(file_name)+1);
 	
 	char* save_ptr;
 
+	char* token; 
+
+	token=strtok_r(fn_cpy, " ", &save_ptr);
+	//token=strtok_r(NULL, " ", &save_ptr);
+
 	/* Open executable file. */
 	//file = filesys_open (file_name);
-	file = filesys_open (strtok_r(fn_cpy, " ", &save_ptr));
+	//file = filesys_open (strtok_r(fn_cpy, " ", &save_ptr));
+	file = filesys_open (token);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
@@ -454,7 +464,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 	
-	
+	//printf("arg?:%s\n", file_name);
 
 	load_on_user_stack(file_name, if_);
  	
@@ -664,7 +674,7 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	}
 
 	///////////////////// [ 2. get token(char*) insert user stack by moving user stack pointer(rsp)  
-	
+
 	//순회 돌며 rsp를 이동시키며 token으로 자른 데이터의 주소를 넣어 준다.
 	for (i=argc-1; i >= 0; i--) {
 		if_->rsp -=strlen(argv[i]) +1; //+1?
@@ -675,12 +685,11 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	///////////////////// [ 3. set word_align as 8 ]
 	uint8_t word_align = NULL;
 	while(if_->rsp % 8 != 0) {
-		memset(if_->rsp, NULL, sizeof(uint8_t));
 		if_->rsp --;
 	}
 
 	///////////////// [ 4. handling bonus argv[argc] ]
-	
+
 	//moving pointer
 	if_->rsp -= sizeof(char*);
 	memset(if_->rsp, NULL, sizeof(char*));
@@ -694,12 +703,13 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	}
 
 	//////////////// [ 6. return addr ]
-	if_->R.rdi = argc;
+		if_->R.rdi = argc;
 	if_->R.rsi = if_->rsp;
 
-	if_->rsp -= sizeof(void*());// return address
+	//if_->rsp -= sizeof(void*());// return address
+	if_->rsp -=8;
 
-	
+
 	return argv;
 }
 

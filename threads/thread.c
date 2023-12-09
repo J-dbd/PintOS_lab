@@ -228,7 +228,7 @@ thread_create (const char *name, int priority,
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
-	//////////////////////
+	////////////////// temp //////////////////
 	list_push_back(&thread_current()->child_list, &t->child_elem);
 
 	/* Call the kernel_thread if it scheduled.
