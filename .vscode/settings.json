@@ -25,6 +25,11 @@
         "loader.h": "c",
         "intrinsic.h": "c",
         "init.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "vm.h": "c",
+        "stdint.h": "c",
+        "inode.h": "c",
+        "stdio.h": "c",
+        "input.h": "c"
     }
 }

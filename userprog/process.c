@@ -713,6 +713,12 @@ load_on_user_stack(const char *file_name, struct intr_frame *if_) {
 	return argv;
 }
 
+// struct thread*
+// process_get_by_fd(int fd) {
+// 	struct thread* curr = thread_current();
+// 	struct file** curr_fdt = curr->fdt
+
+// }
 
 #else
 /* From here, codes will be used after project 3.

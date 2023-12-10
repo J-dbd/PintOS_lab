@@ -109,11 +109,14 @@ struct thread {
 
 	//////////// Project 2 /////////////////////
 	//struct file **fdt[64];
-	struct file **fdt; // file descriptor table //
+	struct file** fdt[64]; // file descriptor table //
 	int next_fd; // file descriptor index //
-	int exit_status;
+	int exit_status; // exit 와 관련, 종료 상태
 
-	/////////// Project 2 ////////////////
+
+
+
+
 	///////////temp - hierarchy /////////////////
 	struct list child_list;
 	struct list_elem child_elem;
@@ -192,5 +195,6 @@ void mlfq_update_priority();
 
 ////////////////// project 2 //////////////////
 struct thread* get_child_thread(tid_t tid);
+struct file* get_file_by_fd_from_curr_thread(int fd);
 
 #endif /* threads/thread.h */

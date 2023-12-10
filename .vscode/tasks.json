@@ -35,10 +35,12 @@
                 "-m", "20",
                 "--fs-disk=10",
                 "-p", "tests/userprog/args-multiple:args-multiple",
+                //"-p", "tests/userprog/read-zero",
                 "--",
                 "-q",
                 "-f", "run",
                 "args-multiple some arguments for you!"
+                //"read-zero",
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"
