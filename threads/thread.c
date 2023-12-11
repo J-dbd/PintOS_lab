@@ -990,6 +990,11 @@ mlfq_update_priority(void) {
 
 /////// project2 
 
+///////////////////////////////////
+////// Process Related Codes //////
+///////////////////////////////////
+
+/* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
 struct thread* get_child_thread(tid_t tid) {
 	struct thread* t;
 	struct list_elem* e;
@@ -1003,6 +1008,11 @@ struct thread* get_child_thread(tid_t tid) {
 
 	return NULL;
 }
+
+
+//////////////////////////////////////
+////// FileSystem Related Codes //////
+//////////////////////////////////////
 
 struct file* get_file_by_fd_from_curr_thread(int fd) {
 	struct thread* curr = thread_current();

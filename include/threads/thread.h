@@ -107,26 +107,32 @@ struct thread {
 	int recent_cpu;
 	int nice;
 
-	//////////// Project 2 /////////////////////
+	//////////// Project 2 /////////////////
+	
+	/// filesystem related
 	//struct file **fdt[64];
 	struct file** fdt[64]; // file descriptor table //
 	int next_fd; // file descriptor index //
-	int exit_status; // exit 와 관련, 종료 상태
+	
+	// process related
+	//int pid; = tid
 
+	int is_loaded_succ; // child process 생성 flag 
 
+	bool is_exited; //process가 종료되었는지 유무
+	int exit_status; // process 정상적인 종료 상태 체크
 
+	// hierarchy 
+	struct thread* parent_process; //부모 프로세스 디스크립터 포인터 필드 추가
 
-
-	///////////temp - hierarchy /////////////////
-	struct list child_list;
+	struct list child_list; //자식 프로세스 리스트
 	struct list_elem child_elem;
-	struct semaphore wait_sema;
-	//////////////////////////////////
 
+	struct semaphore wait_sema; //자식 프로세스가 종료될때까지 대기를 위한 세마포어 
+	struct semaphore load_sema; //자식 프로세스가 load될때까지 부모를 block 시키기 위한 세마포어
 
 	
-
-
+	//////////////////////////////////
 
 
 #ifdef USERPROG

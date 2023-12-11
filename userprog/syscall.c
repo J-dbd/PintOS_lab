@@ -10,9 +10,11 @@
 
 #include "threads/init.h"
 
-#include "filesys/filesys.h"
+//// Project 2 //////
+// for filesystem related
 #include "filesys/directory.h"
 #include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "devices/input.h"
 
 void syscall_entry (void);
@@ -61,16 +63,20 @@ void check_address (void* addr) {
 		//intr_set_level (old_level);
 		syscall_exit(-1);
 	}
-	//해당 페이지가 존재하지 않을 경우를 체크 : 이 부분이 있으면 bad ptr은 통과하되 나머지가 통과 x
+	
 	// if (pml4_get_page(curr->pml4, addr) == NULL) {
 	// 	syscall_exit(-1);
 	// }
+	// page fault를 직접 수정 함
 		
 	// //intr_set_level (old_level);
 	// return;
 
 }
 
+///////////////////////////////////
+////// Process Related Codes //////
+///////////////////////////////////
 
 void
 syscall_halt (void) {
@@ -102,6 +108,7 @@ syscall_exit(int status) {
 bool 
 syscall_create(const char* file, unsigned initial_size) {
 	check_address(file); // null and bad ptr together ... but bad ptr (X)
+	check_address(file + initial_size - 1);
 
 	int success = filesys_create(file, initial_size);
 
