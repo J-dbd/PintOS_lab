@@ -16,6 +16,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "devices/input.h"
+#include "userprog/process.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -87,16 +88,76 @@ void
 syscall_exit(int status) {
 //thread == process
 	struct thread* curr = thread_current();
-
+	// 자식이 없을 때
 	if (list_empty(&curr->child_list)) {
 		curr->exit_status = status;
 	}
-	else {
+	else { //자식이 하나라도 있을 때
 		curr->exit_status = list_entry(list_front(&curr->child_list), struct thread, child_elem)->exit_status;
 	}
+
+
+	//curr->exit_status = status;
 	/* save exit status at process descriptor */
 	printf("%s: exit(%d)\n",curr->name, status);
+
+
 	thread_exit();
+}
+
+/* Change current process to the executable whose name is given in cmd_line, passing any given arguments. This never returns if successful. Otherwise the process terminates with exit state -1, if the program cannot load or run for any reason.  Please note that file descriptors remain open across an exec call. */
+int syscall_exec(const char* file) {
+	//printf("여기? 0 \n");
+
+	/* This function does not change the name of the thread that called exec. */
+	//copy the file name by palloc
+	char* fn_cpy = palloc_get_page (0);
+	if (fn_cpy == NULL) {
+		//printf("여기? 1 \n");
+		syscall_exit(-1);
+		//return -1;
+	}
+	memcpy(fn_cpy, file, PGSIZE);
+
+	/* This never returns if successful. 
+	Otherwise the process terminates with exit state -1 */
+
+	if( process_exec(fn_cpy) < 0) { //if failed
+		//printf("여기? 2 \n");
+		syscall_exit(-1);
+		//return -1;
+	}
+
+	// process 종료 or return -1?
+
+}
+
+int
+syscall_fork (const char *thread_name, struct intr_frame* if_) {
+	//////// type 1
+
+	struct thread* curr = thread_current();
+	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
+	int child_pid;
+	if((child_pid = process_fork(thread_name, if_)) < 0) {
+		//if fork is failed
+		return -1;
+	}
+	struct thread* child = get_child_thread(child_pid);
+	sema_down(&child->load_sema);
+	////sema_down(&curr->load_sema);
+	return child_pid;
+
+	/////type 1 end
+
+	///////////////// type2
+	// return process_fork(thread_name, if_); 
+	//////////////// type2 end
+}
+
+int
+syscall_wait(int pid) {
+	return process_wait(pid);
 }
 
 
@@ -391,10 +452,17 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		
 		case (SYS_FORK) :
+			//check_address(f->R.rdi);
+			syscall_fork(f->R.rdi, f);
 			break;
 		case (SYS_EXEC) :
+			check_address(f->R.rdi);
+			syscall_exec(f->R.rdi);
+			//f->R.rax = syscall_exec(f->R.rdi);
 			break;
 		case (SYS_WAIT) :
+			//check_address(f->R.rdi);
+			f->R.rax = syscall_wait(f->R.rdi);
 			break;
 		case (SYS_CREATE) :
 			//check_address(f->R.rdi);

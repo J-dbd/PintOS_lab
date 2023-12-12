@@ -32,15 +32,19 @@
                 "-v",
                 "-k",
                 "-T", "60000",
+                //"-T", "60",
                 "-m", "20",
                 "--fs-disk=10",
-                "-p", "tests/userprog/args-multiple:args-multiple",
+                //"-p", "tests/userprog/args-multiple:args-multiple",
                 //"-p", "tests/userprog/read-zero",
+                "-p", "tests/userprog/fork-once:fork-once",
                 "--",
                 "-q",
                 "-f", "run",
-                "args-multiple some arguments for you!"
+                //"args-multiple some arguments for you!"
                 //"read-zero",
+                "fork-once",
+
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"

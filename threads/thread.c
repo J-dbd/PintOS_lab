@@ -228,7 +228,7 @@ thread_create (const char *name, int priority,
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
 
-	////////////// project 2 /////////////////
+	////////////// project 2 //////////////////////
 	//Allocate File Descriptor table
 
 	t->fdt[64] = palloc_get_page(PAL_ZERO);
@@ -237,21 +237,24 @@ thread_create (const char *name, int priority,
 		return TID_ERROR;
 	}
 
-	
-
 	// setting File Descriptor Table // 
 
 	//Reserve fd0, fd1 for stdin and stdout
 	t->fdt[0] = NULL; //STDIN 표준입력
 	t->fdt[1] = NULL; //STDOUT 표준출력
-
 	//Initialize pointer to file descriptor table.
 	t->fdt[2] = t->fdt; /* struct thread의 포인터가 File Descriptor 테이블의 시작주소를 가리키도록 초기화 */
-
 	t->next_fd = 3;
 
 
-	////////////////// temp - hierarchy //////////////////
+	/// temp - hierarchy 
+	//부모 프로세스 디스크립터 포인터 저장
+	t->parent_process = thread_current(); 
+	
+	t->is_loaded_succ = 0;
+	t->is_exited = 0;
+
+	//부모 프로세스(curr)의 자식 리스트에 생성된 쓰레드(갓 만든 t) 추가
 	list_push_back(&thread_current()->child_list, &t->child_elem);
 
 	/* Call the kernel_thread if it scheduled.
@@ -419,7 +422,13 @@ thread_exit (void) {
 	//palloc_free_page(thread_current()->fdt[64]); //PAL_USER?
 
 	/// temp - hierarchy ///
-    sema_up(&thread_current()->wait_sema);
+
+	//이번에만 주석처리 해봄 원래 주석 아닐때 돌아감
+    //sema_up(&thread_current()->wait_sema);
+	// 원래 없었음
+	//sema_down(&thread_current()->exit_sema);
+
+	//palloc_free_page(thread_current()->fdt);
 	/* Just set our status to dying and schedule another process.
 	   We will be destroyed during the call to schedule_tail(). */
 	intr_disable ();
@@ -616,6 +625,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	////////////// 임시 ///////////////
 	list_init(&t->child_list);
 	sema_init(&t->wait_sema, 0);
+	sema_init(&t->load_sema, 0);
+	sema_init(&t->exit_sema, 0);
+
 
 }
 

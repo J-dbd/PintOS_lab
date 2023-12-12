@@ -3,3 +3,4 @@ memo
 #build files
 threads/build/
 userprog/build/
+filesys/build/

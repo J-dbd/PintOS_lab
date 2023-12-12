@@ -79,11 +79,34 @@ initd (void *f_name) {
  * TID_ERROR if the thread cannot be created. */
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
+	///////////////////// type 2
+	// struct thread* curr = thread_current();
+
+	//  memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
+
+	// int child_pid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+
+	// if (child_pid < 0) {
+	// 	return -1;
+	// }
+
+	// struct thread* child = get_child_thread(child_pid);
+
+	// sema_down(&child->load_sema);
+
+	// return child_pid;
+
+	////////////////////// type2 end
+
+	////// type 1
+
 	/* Clone current thread to new thread.*/
 	return thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());
-}
 
+	////// type 1 end
+}
+//project 2, duplicate page table entry
 #ifndef VM
 /* Duplicate the parent's address space by passing this function to the
  * pml4_for_each. This is only for the project 2. */
@@ -96,21 +119,36 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately. */
+	//parent_page = parent->pml4;
+	if (is_kernel_vaddr(va)) { 
+		return true;
+	}
 
 	/* 2. Resolve VA from the parent's page map level 4. */
 	parent_page = pml4_get_page (parent->pml4, va);
+	if(parent_page == NULL) {
+		return false;
+	}
 
 	/* 3. TODO: Allocate new PAL_USER page for the child and set result to
 	 *    TODO: NEWPAGE. */
+	newpage = palloc_get_page(PAL_USER);
+	if(newpage == NULL) {
+		return false;
+	}
+	
 
 	/* 4. TODO: Duplicate parent's page to the new page and
 	 *    TODO: check whether parent's page is writable or not (set WRITABLE
 	 *    TODO: according to the result). */
+	memcpy(newpage, parent_page, PGSIZE); //copy
+	writable = is_writable(pte); //checking
 
 	/* 5. Add new page to child's page table at address VA with WRITABLE
 	 *    permission. */
 	if (!pml4_set_page (current->pml4, va, newpage, writable)) {
 		/* 6. TODO: if fail to insert page, do error handling. */
+		return false;
 	}
 	return true;
 }
@@ -127,10 +165,12 @@ __do_fork (void *aux) {
 	struct thread *current = thread_current ();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
+	parent_if = &parent->parent_if;
 	bool succ = true;
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
+	if_.R.rax = 0; //set child process' return value as 0
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();
@@ -153,12 +193,28 @@ __do_fork (void *aux) {
 	 * TODO:       from the fork() until this function successfully duplicates
 	 * TODO:       the resources of parent.*/
 
+	//duplicate the file object from parent to child
+	// 1) dup fdt
+	struct file* f;
+
+	for (int i = 3; i<64; i++) {
+		if((f = parent->fdt[i]) ==NULL) {
+			continue;
+		}
+		current->fdt[i] = file_duplicate(f);
+	}
+	// 2) dup next_fd idx number
+	current->next_fd = parent->next_fd;
+	//대기 중인 parent 해제
+	sema_up(&current->load_sema);
+
 	process_init ();
 
 	/* Finally, switch to the newly created process. */
 	if (succ)
 		do_iret (&if_);
 error:
+	sema_up(&current->load_sema);
 	thread_exit ();
 }
 
@@ -219,9 +275,23 @@ process_wait (tid_t child_tid UNUSED) {
 	if (!(child = get_child_thread(child_tid))) {
 		return -1;
 	}
+
+	int exit_status = child->exit_status;
+
+	// while(child->exit_status == 0) {
+	// 	sema_down(&child->wait_sema);
+	// 	list_remove(&child->child_elem);
+	// 	return exit_status;
+	// }
+
+	
 	sema_down(&child->wait_sema);
 	list_remove(&child->child_elem);
-	int exit_status = child->exit_status;
+	//child->is_exited = true;
+
+
+	 sema_up(&child->exit_sema);
+	
 	return exit_status;
 
 	//return 0;
@@ -235,8 +305,26 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	
+	// int i;
+	// for (i = 2; i < 64; i++) {
+	// 	if (curr->fdt[i] != NULL) {
+	// 		file_close(curr->fdt[i]);
+	// 	}
+	// }
+
+	// palloc_free_page(curr->fdt);
+
+	// file_close(curr->running_file);
+	
+
+	//palloc_free_multiple(curr->fdt, i);
+	//palloc_free_page(curr->fdt);
 
 	process_cleanup ();
+	//b
+	sema_up(&curr->wait_sema);
+	sema_down(&curr->exit_sema);
 }
 
 /* Free the current process's resources. */
@@ -453,6 +541,9 @@ load (const char *file_name, struct intr_frame *if_) {
 				break;
 		}
 	}
+
+	t->running_file = file;
+	file_deny_write(file);
 
 	/* Set up stack. */
 	if (!setup_stack (if_))

@@ -130,6 +130,14 @@ struct thread {
 
 	struct semaphore wait_sema; //자식 프로세스가 종료될때까지 대기를 위한 세마포어 
 	struct semaphore load_sema; //자식 프로세스가 load될때까지 부모를 block 시키기 위한 세마포어
+	struct semaphore exit_sema;
+
+
+	struct intr_frame parent_if;
+
+	struct file* running_file;
+
+
 
 	
 	//////////////////////////////////
