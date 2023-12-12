@@ -37,13 +37,14 @@
                 "--fs-disk=10",
                 //"-p", "tests/userprog/args-multiple:args-multiple",
                 //"-p", "tests/userprog/read-zero",
-                "-p", "tests/userprog/fork-once:fork-once",
+                //"-p", "tests/userprog/fork-once:fork-once",
+                "-p", "tests/userprog/wait-simple:wait-simple",
                 "--",
                 "-q",
                 "-f", "run",
                 //"args-multiple some arguments for you!"
                 //"read-zero",
-                "fork-once",
+                "wait-simple",
 
             ],
             "options": {

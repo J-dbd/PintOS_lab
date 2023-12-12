@@ -60,6 +60,13 @@ syscall_init (void) {
 void check_address (void* addr) {
 	/* A null pointer / A pointer to unmapped virtual memory */
 	struct thread *curr = thread_current();
+
+	// if ((is_user_vaddr(addr) == false) || addr == NULL || pml4_get_page(curr->pml4, addr) == NULL) {
+	// 	//intr_set_level (old_level);
+	// 	syscall_exit(-1);
+	// }
+
+
 	if ((is_user_vaddr(addr) == false) || addr == NULL) {
 		//intr_set_level (old_level);
 		syscall_exit(-1);
@@ -89,15 +96,15 @@ syscall_exit(int status) {
 //thread == process
 	struct thread* curr = thread_current();
 	// 자식이 없을 때
-	if (list_empty(&curr->child_list)) {
-		curr->exit_status = status;
-	}
-	else { //자식이 하나라도 있을 때
-		curr->exit_status = list_entry(list_front(&curr->child_list), struct thread, child_elem)->exit_status;
-	}
+	// if (list_empty(&curr->child_list)) {
+	// 	curr->exit_status = status;
+	// }
+	// else { //자식이 하나라도 있을 때
+	// 	curr->exit_status = list_entry(list_front(&curr->child_list), struct thread, child_elem)->exit_status;
+	// }
 
 
-	//curr->exit_status = status;
+	curr->exit_status = status;
 	/* save exit status at process descriptor */
 	printf("%s: exit(%d)\n",curr->name, status);
 
@@ -111,24 +118,22 @@ int syscall_exec(const char* file) {
 
 	/* This function does not change the name of the thread that called exec. */
 	//copy the file name by palloc
-	char* fn_cpy = palloc_get_page (0);
-	if (fn_cpy == NULL) {
-		//printf("여기? 1 \n");
-		syscall_exit(-1);
-		//return -1;
-	}
-	memcpy(fn_cpy, file, PGSIZE);
+	// char* fn_cpy = palloc_get_page (0);
+	// if (fn_cpy == NULL) {
+	// 	//printf("여기? 1 \n");
+	// 	syscall_exit(-1);
+	// 	//return -1;
+	// }
+	// memcpy(fn_cpy, file, PGSIZE);
 
 	/* This never returns if successful. 
 	Otherwise the process terminates with exit state -1 */
 
-	if( process_exec(fn_cpy) < 0) { //if failed
+	if( process_exec(file) == -1) { //if failed
 		//printf("여기? 2 \n");
 		syscall_exit(-1);
 		//return -1;
 	}
-
-	// process 종료 or return -1?
 
 }
 
@@ -136,22 +141,22 @@ int
 syscall_fork (const char *thread_name, struct intr_frame* if_) {
 	//////// type 1
 
-	struct thread* curr = thread_current();
-	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
-	int child_pid;
-	if((child_pid = process_fork(thread_name, if_)) < 0) {
-		//if fork is failed
-		return -1;
-	}
-	struct thread* child = get_child_thread(child_pid);
-	sema_down(&child->load_sema);
-	////sema_down(&curr->load_sema);
-	return child_pid;
+	// struct thread* curr = thread_current();
+	// memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
+	// int child_pid;
+	// if((child_pid = process_fork(thread_name, if_)) < 0) {
+	// 	//if fork is failed
+	// 	return -1;
+	// }
+	// struct thread* child = get_child_thread(child_pid);
+	// sema_down(&child->load_sema);
+	// ////sema_down(&curr->load_sema);
+	// return child_pid;
 
 	/////type 1 end
 
 	///////////////// type2
-	// return process_fork(thread_name, if_); 
+	return process_fork(thread_name, if_); 
 	//////////////// type2 end
 }
 

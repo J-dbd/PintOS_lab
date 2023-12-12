@@ -126,7 +126,38 @@ page_fault (struct intr_frame *f) {
 	void *fault_addr;  /* Fault address. */
 
 	//project 2//
-	syscall_exit(-1);
+	exit(-1);
+
+	// int PHYS_BASE = 0x80040000;
+	// int VIRTUAL_BASE = 0x00000000;
+	// /* Handle kernel-mode page faults. */
+	// if (!user) {
+	// 	if (is_kernel_vaddr(fault_addr)) {
+	// 		if (fault_addr >= PHYS_BASE) {
+	// 			syscall_exit(-1);
+	// 		}
+	// 		else {
+	// 		}
+	// 	}
+
+	// 	else {
+	// 		syscall_exit(-1);
+	// 	}
+	// }
+
+	// /* Handle user-mode page faults. */
+	// else {
+	// 	if (is_kernel_vaddr(fault_addr)) {
+	// 		syscall_exit(-1);
+	// 	}
+	// 	else {
+	// 		if (fault_addr <= VIRTUAL_BASE) {
+	// 			syscall_exit(-1);
+	// 		} else {
+	// 		}
+	// 	}
+	// }
+
 	
 
 	/* Obtain faulting address, the virtual address that was

@@ -30,6 +30,7 @@
         "stdint.h": "c",
         "inode.h": "c",
         "stdio.h": "c",
-        "input.h": "c"
+        "input.h": "c",
+        "main.h": "c"
     }
 }

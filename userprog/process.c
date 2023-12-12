@@ -80,29 +80,31 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	///////////////////// type 2
-	// struct thread* curr = thread_current();
+	struct thread* curr = thread_current();
 
-	//  memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
+	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
 
-	// int child_pid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+	int child_pid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+	if (child_pid == TID_ERROR)
+		return TID_ERROR;
 
 	// if (child_pid < 0) {
 	// 	return -1;
 	// }
 
-	// struct thread* child = get_child_thread(child_pid);
+	struct thread* child = get_child_thread(child_pid);
 
-	// sema_down(&child->load_sema);
+	sema_down(&child->load_sema);
 
-	// return child_pid;
+	return child_pid;
 
 	////////////////////// type2 end
 
 	////// type 1
 
 	/* Clone current thread to new thread.*/
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+	// return thread_create (name,
+	// 		PRI_DEFAULT, __do_fork, thread_current ());
 
 	////// type 1 end
 }
@@ -197,11 +199,20 @@ __do_fork (void *aux) {
 	// 1) dup fdt
 	struct file* f;
 
-	for (int i = 3; i<64; i++) {
-		if((f = parent->fdt[i]) ==NULL) {
-			continue;
+	// for (int i = 3; i<64; i++) {
+	// 	if((f = parent->fdt[i]) ==NULL) {
+	// 		continue;
+	// 	}
+	// 	current->fdt[i] = file_duplicate(f);
+	// }
+
+	for (int i = 0; i < 64; i++) {
+		struct file *file = parent->fdt[i];
+		if (file == NULL) continue;
+		if (file > 2) {
+			file = file_duplicate(file);
 		}
-		current->fdt[i] = file_duplicate(f);
+		current->fdt[i] = file;
 	}
 	// 2) dup next_fd idx number
 	current->next_fd = parent->next_fd;
@@ -268,30 +279,19 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	//while(1); //무조건 끝나니까 
-	// for (int i = 0; i<100000000; i++){}
-	// return -1;
-	struct thread* child;
-	if (!(child = get_child_thread(child_tid))) {
+
+	struct thread* child = get_child_thread(child_tid);
+	if (child == NULL) {
 		return -1;
 	}
-
-	int exit_status = child->exit_status;
-
-	// while(child->exit_status == 0) {
-	// 	sema_down(&child->wait_sema);
-	// 	list_remove(&child->child_elem);
-	// 	return exit_status;
-	// }
+	//printf("child found.");
 
 	
 	sema_down(&child->wait_sema);
 	list_remove(&child->child_elem);
-	//child->is_exited = true;
-
-
-	 sema_up(&child->exit_sema);
-	
+	sema_up(&child->exit_sema);
+	int exit_status = child->exit_status;
+	//printf("returning status: %d\n", exit_status);
 	return exit_status;
 
 	//return 0;
@@ -305,24 +305,9 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	
-	// int i;
-	// for (i = 2; i < 64; i++) {
-	// 	if (curr->fdt[i] != NULL) {
-	// 		file_close(curr->fdt[i]);
-	// 	}
-	// }
-
-	// palloc_free_page(curr->fdt);
-
-	// file_close(curr->running_file);
-	
-
-	//palloc_free_multiple(curr->fdt, i);
-	//palloc_free_page(curr->fdt);
 
 	process_cleanup ();
-	//b
+
 	sema_up(&curr->wait_sema);
 	sema_down(&curr->exit_sema);
 }
