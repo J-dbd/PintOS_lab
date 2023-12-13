@@ -129,24 +129,34 @@ syscall_create(const char* file, unsigned initial_size) {
 
 	int success = filesys_create(file, initial_size);
 
-	if (success) {
-		lock_acquire(&filesys_lock);
-		struct thread* curr = thread_current();
-		struct file** curr_fdt = curr->fdt;
-		int fd;
-		for (fd = 2; fd < FDT_MAX; fd++) {
-			if(curr_fdt[fd] == NULL) {
-				curr_fdt[fd] = file;
-				break;
-			}
-		}
-		curr->next_fd += 1;
-		lock_release(&filesys_lock);
-		return true;
-	}
-	else {
-		return false;
-	}
+	//printf("succ?: %d\n", success);
+
+	
+
+	// if (success) {
+	// 	lock_acquire(&filesys_lock);
+	// 	struct thread* curr = thread_current();
+	// 	struct file** curr_fdt = curr->fdt;
+	// 	int fd;
+	// 	for (fd = 2; fd < FDT_MAX; fd++) {
+	// 		if(curr_fdt[fd] == NULL) {
+	// 			printf("file? : %s\n", file);
+	// 			curr_fdt[fd] = file;
+	// 			printf("CURR fd: %d  / %p\n", fd, curr_fdt[fd]);
+	// 			printf("1 next_fd:%d", curr->next_fd);
+	// 			break;
+	// 		}
+	// 	}
+	// 	curr->next_fd += 1;
+	// 	printf("2 next_fd:%d", curr->next_fd);
+	// 	lock_release(&filesys_lock);
+	// 	return true;
+	// }
+	// else {
+	// 	return false;
+	// }
+	return success;
+
 }
 
 /* File is removed regardless of whether it is open or closed. */
@@ -176,34 +186,53 @@ syscall_remove(const char* file) {
 
 int 
 syscall_open (const char *filename) {
+	//printf("[open] %s\n",filename);
 	struct file* opened_file = filesys_open(filename);
+	//printf("[open]opened_file? : %p\n", opened_file);
 
 	if (opened_file == NULL) {
+		//printf("a\n");
 		return -1;//checking
 	}
-	lock_acquire(&filesys_lock);
+	//printf("b\n");
+	//lock_acquire(&filesys_lock);
 	struct thread* curr = thread_current();
 	struct file** curr_fdt = curr->fdt;
 
 	// FD 0 and 1 are allocated for stdin and stdout, respectively.
 
 	int fd;
+	
 	for (fd = 2; fd < FDT_MAX; fd++) {
+		//printf("[read inside] curr_fdt[%d]: %p\n", fd, curr_fdt[fd]);
 		if(curr_fdt[fd] == NULL) {
 			curr_fdt[fd] = opened_file;
+			//printf("[open] curr_fdt: %p\n", curr_fdt[fd]);
 			break;
 		}
 	}
 
+	//printf("[open]fd?: %d\n", fd);
+
+	//curr->fdt[curr->next_fd]=opened_file;
+	
+
 	if(fd == FDT_MAX) {
-		lock_release(&filesys_lock);
+		//printf("c\n");
+		//lock_release(&filesys_lock);
 		file_close(opened_file);
 		return -1;//checking
 	}
+
+	curr->next_fd += 1;
 	// Increment the next_fd for the next open file
-	curr->next_fd = fd + 1; 
+	//curr->next_fd = fd + 1; 
 	// realease the lock
-	lock_release(&filesys_lock);
+	//lock_release(&filesys_lock);
+
+	//fd = curr->next_fd;
+
+	//printf("[read] open returnning fd:%d\n", fd);
 
 	return fd;
 }
@@ -284,13 +313,15 @@ otherwise write to the file using file_write() function
 int 
 syscall_write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);//check buffer
-	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
+	//printf("fd?: %d\n", fd);
+	//printf("[write] fd: %d\n", fd);
+	
+	//printf("[write] target_file: %p\n", target_file);
 	int byte_size = 0;
 
 	
 	//printf("a\n");
 	if (fd == 1) { 
-		
 		//STDOUT인 경우 버퍼에 쓰여진 내용을 그대로 화면에 출력 
 		//쓰인 size를 저장
 		putbuf(buffer, size);
@@ -301,18 +332,20 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 	}
 	else {
 		//printf("b\n");
+
+		struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 		
 		if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
-			lock_release(&filesys_lock);
 			return -1;
 		}
 		//printf("c\n");
-		lock_acquire(&filesys_lock);
+		//lock_acquire(&filesys_lock);
 		byte_size = file_write(target_file, buffer, size);
-		lock_release(&filesys_lock);
+		//lock_release(&filesys_lock);
 	}
 	//printf("d\n");
+	//printf("[write] return value: %d\n", byte_size);
 	return byte_size;
 }
 
@@ -320,20 +353,24 @@ void
 syscall_seek(int fd, unsigned position) {
 	//check_address(position);
 
+	//printf("11 seek fd %d\n", fd);
+
 	if (fd < 2){ //fd가 0이나 1일 경우 리턴 
 		return -1;
 	}
 
-	lock_acquire(&filesys_lock);
+	//lock_acquire(&filesys_lock);
 	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 	if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
-			lock_release(&filesys_lock);
+			//lock_release(&filesys_lock);
 			return -1;
 		}
 	
 	file_seek(target_file, position);
-	lock_release(&filesys_lock);
+	//lock_release(&filesys_lock);
+
+	//printf("22 seek fd %d\n", fd);
 
 }
 
@@ -474,7 +511,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax =  syscall_read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_WRITE) :
+			//printf("syscall fd? 11: %d\n", f->R.rdi);
 			check_address(f->R.rdi);
+			//printf("syscall fd? 22: %d\n", f->R.rdi);
 			f->R.rax = syscall_write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_SEEK) :

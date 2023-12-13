@@ -54,8 +54,12 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	char* token;
+	char* save_ptr;
+	token = strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (token, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -186,14 +190,17 @@ __do_fork (void *aux) {
 	// 1) dup fdt
 	struct file* f;
 
-	for (int i = 0; i < FDT_MAX; i++) {
-		struct file *file = parent->fdt[i];
-		if (file == NULL) 
+	for (int i = 2; i<FDT_MAX; i++) {
+		
+		if(parent->fdt[i] == NULL) {
 			continue;
-		if (file > 2) {
-			file = file_duplicate(file);
 		}
-		current->fdt[i] = file;
+		current->fdt[i] = file_duplicate(parent->fdt[i]);
+
+		// if (parent->fdt[i]!=NULL) {
+		// 	printf("parent fdt[%d] : %p\n", i, parent->fdt[i]);
+		// 	current->fdt[i] = file_duplicate(parent->fdt[i]);
+		// }
 	}
 	// 2) dup next_fd idx number
 	current->next_fd = parent->next_fd;
@@ -285,7 +292,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	for (int i = 2; i<=FDT_MAX; i++) {
+	for (int i = 2; i<FDT_MAX; i++) {
 		if(curr->fdt[i]!=NULL){
 			syscall_close(i);
 		}
