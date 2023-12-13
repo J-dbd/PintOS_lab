@@ -18,6 +18,7 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "userprog/syscall.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -94,6 +95,9 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	struct thread* child = get_child_thread(child_pid);
 	sema_down(&child->load_sema);
+	if (child->exit_status == TID_ERROR) {
+		return TID_ERROR;
+	}
 
 	return child_pid;
 
@@ -188,19 +192,31 @@ __do_fork (void *aux) {
 
 	//duplicate the file object from parent to child
 	// 1) dup fdt
+	if (parent->next_fd == FDT_MAX) {
+		goto error;
+	}
+
 	struct file* f;
 
-	for (int i = 2; i<FDT_MAX; i++) {
+	// for (int i = 2; i<FDT_MAX; i++) {
 		
-		if(parent->fdt[i] == NULL) {
-			continue;
-		}
-		current->fdt[i] = file_duplicate(parent->fdt[i]);
+	// 	if(parent->fdt[i] == NULL) {
+	// 		continue;
+	// 	}
+	// 	current->fdt[i] = file_duplicate(parent->fdt[i]);
 
-		// if (parent->fdt[i]!=NULL) {
-		// 	printf("parent fdt[%d] : %p\n", i, parent->fdt[i]);
-		// 	current->fdt[i] = file_duplicate(parent->fdt[i]);
-		// }
+	// 	// if (parent->fdt[i]!=NULL) {
+	// 	// 	printf("parent fdt[%d] : %p\n", i, parent->fdt[i]);
+	// 	// 	current->fdt[i] = file_duplicate(parent->fdt[i]);
+	// 	// }
+	// }
+	for (int i = 0; i < FDT_MAX; i++) {
+		struct file *file = parent->fdt[i];
+		if (file == NULL) continue;
+		if (file > 2) {
+			file = file_duplicate(file);
+		}
+		current->fdt[i] = file;
 	}
 	// 2) dup next_fd idx number
 	current->next_fd = parent->next_fd;
@@ -214,7 +230,8 @@ __do_fork (void *aux) {
 		do_iret (&if_);
 error:
 	sema_up(&current->load_sema);
-	thread_exit ();
+	//thread_exit ();
+	syscall_exit(-1);
 }
 
 /* Switch the current execution context to the f_name.
@@ -279,8 +296,10 @@ process_wait (tid_t child_tid) {
 
 	sema_down(&child->wait_sema); //for waiting
 	list_remove(&child->child_elem);
+	int status = child->exit_status;
 	sema_up(&child->exit_sema);
-	return child->exit_status;;
+
+	return status;
 
 }
 
@@ -293,13 +312,16 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	for (int i = 2; i<FDT_MAX; i++) {
-		if(curr->fdt[i]!=NULL){
-			syscall_close(i);
-		}
+		syscall_close(i);
+		// if(curr->fdt[i]!=NULL){
+		// 	syscall_close(i);
+		// }
 	}
 
+	
+	//palloc_free_page(curr->fdt);
+	palloc_free_multiple(curr->fdt, FDT_PAGES);
 	file_close(curr->running_file);
-	palloc_free_page(curr->fdt);
 	
 	process_cleanup ();
 
@@ -442,7 +464,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	/////////////////////////////////////////////
 
 	/* Open executable file. */
+	lock_acquire(&filesys_lock);
 	file = filesys_open (filename_tokenized);
+	lock_release(&filesys_lock);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;

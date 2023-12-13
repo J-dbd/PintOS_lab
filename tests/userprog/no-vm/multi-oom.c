@@ -111,6 +111,9 @@ make_children (void) {
       snprintf (child_name, sizeof child_name, "%s_%d_%s", "child", i, "X");
       pid = fork(child_name);
       if (pid > 0 && wait (pid) != -1) {
+        //msg ("[make children] pid: %d", pid);
+        //msg ("[make children] wait (pid): %d", wait (pid));
+
         fail ("crashed child should return -1.");
       } else if (pid == 0) {
         consume_some_resources_and_die();

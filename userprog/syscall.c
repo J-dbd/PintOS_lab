@@ -72,6 +72,22 @@ void check_address (void* addr) {
 		
 }
 
+int add_file_to_fd_table (struct file *file) {
+	struct thread *t = thread_current();
+	struct file **fdt = t->fdt;
+	int fd = t->next_fd;
+	while (t->fdt[fd] != NULL) {
+		if (fd >= FDT_MAX) {
+			t->next_fd = FDT_MAX;
+			return -1;
+		}
+		fd++;
+	}
+	t->next_fd = fd;
+	fdt[fd] = file;
+	return fd;
+}
+
 ///////////////////////////////////
 ////// Process Related Codes //////
 ///////////////////////////////////
@@ -125,7 +141,7 @@ syscall_wait(int pid) {
 bool 
 syscall_create(const char* file, unsigned initial_size) {
 	check_address(file); 
-	check_address(file + initial_size - 1);
+	//check_address(file + initial_size - 1);
 
 	int success = filesys_create(file, initial_size);
 
@@ -165,7 +181,7 @@ syscall_remove(const char* file) {
 	int success = filesys_remove(file);
 
 	if (success) {
-		lock_acquire(&filesys_lock);
+		//lock_acquire(&filesys_lock);
 		struct thread* curr = thread_current();
 		struct file** curr_fdt = curr->fdt;
 		int fd;
@@ -176,7 +192,7 @@ syscall_remove(const char* file) {
 			}
 		}
 		curr->next_fd -=1;
-		lock_release(&filesys_lock);
+		//lock_release(&filesys_lock);
 		return true;
 	}
 	else {
@@ -186,66 +202,65 @@ syscall_remove(const char* file) {
 
 int 
 syscall_open (const char *filename) {
-	//printf("[open] %s\n",filename);
-	struct file* opened_file = filesys_open(filename);
-	//printf("[open]opened_file? : %p\n", opened_file);
+	// struct file* opened_file = filesys_open(filename);
 
-	if (opened_file == NULL) {
-		//printf("a\n");
-		return -1;//checking
-	}
-	//printf("b\n");
-	//lock_acquire(&filesys_lock);
-	struct thread* curr = thread_current();
-	struct file** curr_fdt = curr->fdt;
+	// if (opened_file == NULL) {
+	// 	return -1;//checking
+	// }
 
-	// FD 0 and 1 are allocated for stdin and stdout, respectively.
+	// struct thread* curr = thread_current();
+	// struct file** curr_fdt = curr->fdt;
 
-	int fd;
+	// // FD 0 and 1 are allocated for stdin and stdout, respectively.
+	// if(curr->next_fd >= FDT_MAX) {
+	// 	file_close(opened_file);
+	// 	return -1;//checking
+	// }
+
 	
-	for (fd = 2; fd < FDT_MAX; fd++) {
-		//printf("[read inside] curr_fdt[%d]: %p\n", fd, curr_fdt[fd]);
-		if(curr_fdt[fd] == NULL) {
-			curr_fdt[fd] = opened_file;
-			//printf("[open] curr_fdt: %p\n", curr_fdt[fd]);
-			break;
-		}
-	}
-
-	//printf("[open]fd?: %d\n", fd);
-
-	//curr->fdt[curr->next_fd]=opened_file;
 	
+	// // for (fd = 2; fd < FDT_MAX; fd++) {
+	// // 	if(curr_fdt[fd] == NULL) {
+	// // 		curr_fdt[fd] = opened_file;
+	// // 		break;
+	// // 	}
+	// // }
 
-	if(fd == FDT_MAX) {
-		//printf("c\n");
-		//lock_release(&filesys_lock);
-		file_close(opened_file);
-		return -1;//checking
+	// curr_fdt[curr->next_fd] = opened_file;
+
+	// int fd;
+	// fd =curr->next_fd;
+
+	// if(fd >= FDT_MAX) {
+	// 	file_close(opened_file);
+	// 	return -1;//checking
+	// }
+	// curr->next_fd += 1;
+	// return fd;
+
+	check_address(filename);
+	lock_acquire(&filesys_lock);
+	struct file *file_info = filesys_open(filename);
+	lock_release(&filesys_lock);
+	if (file_info == NULL) {
+		return -1;
 	}
-
-	curr->next_fd += 1;
-	// Increment the next_fd for the next open file
-	//curr->next_fd = fd + 1; 
-	// realease the lock
-	//lock_release(&filesys_lock);
-
-	//fd = curr->next_fd;
-
-	//printf("[read] open returnning fd:%d\n", fd);
-
+	int fd = add_file_to_fd_table(file_info);
+	if (fd == -1) {
+		file_close(file_info);
+	}
 	return fd;
 }
 
 int 
 syscall_filesize(int fd) {
 
-	lock_acquire(&filesys_lock);
+	//lock_acquire(&filesys_lock);
 
 	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 	off_t filesize = file_length(target_file);
 
-	lock_release(&filesys_lock);
+	//lock_release(&filesys_lock);
 	return (int)(filesize);
 }
 
@@ -263,7 +278,7 @@ syscall_read(int fd, void *buffer, unsigned size) {
 
 	check_address(buffer); //check buffer 
 	//check_address(buffer + size -1);
-	lock_acquire(&filesys_lock);
+	
 	int byte_size = 0;
 	//printf("rb\n");
 	// If fd is 0, it reads from keyboard using input_getc()
@@ -281,7 +296,7 @@ syscall_read(int fd, void *buffer, unsigned size) {
 	}
 	else if (fd == 1) { 
 
-		lock_release(&filesys_lock);
+		//lock_release(&filesys_lock);
 		return -1;
 	}
 	else {
@@ -291,14 +306,15 @@ syscall_read(int fd, void *buffer, unsigned size) {
 
 		if (target_file == NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않는다면 -1을 리턴 
-			lock_release(&filesys_lock);
+			
 			return -1;
 		}
+		lock_acquire(&filesys_lock);
 		byte_size = file_read(target_file, buffer, size);
-		//lock_release(&filesys_lock);
+		lock_release(&filesys_lock);
 	}
 	//printf("rd\n");
-	lock_release(&filesys_lock);
+	
 	//printf("re\n");
 	return byte_size;
 }
@@ -340,9 +356,9 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 			return -1;
 		}
 		//printf("c\n");
-		//lock_acquire(&filesys_lock);
+		lock_acquire(&filesys_lock);
 		byte_size = file_write(target_file, buffer, size);
-		//lock_release(&filesys_lock);
+		lock_release(&filesys_lock);
 	}
 	//printf("d\n");
 	//printf("[write] return value: %d\n", byte_size);
@@ -386,16 +402,16 @@ syscall_tell (int fd) {
 		return -1;
 	}
 
-	lock_acquire(&filesys_lock);
+	//lock_acquire(&filesys_lock);
 	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 	if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
-			lock_release(&filesys_lock);
+			//lock_release(&filesys_lock);
 			return -1;
 		}
 	next_byte = file_tell(target_file);
 
-	lock_release(&filesys_lock);
+	//lock_release(&filesys_lock);
 	return next_byte;
 }
 /* close() set 0 at file descriptor entry at index fd */
@@ -429,26 +445,36 @@ syscall_close(int fd) {
 
 /////////////ver 2
 
-	if (fd <2) {
-		return -1;
-	}
+	// if (fd <2) {
+	// 	return -1;
+	// }
 
-	struct thread* curr = thread_current();
-	struct file** curr_fdt = curr->fdt;
-	struct file* target_file = curr_fdt[fd];
+	// struct thread* curr = thread_current();
+	// struct file** curr_fdt = curr->fdt;
 
-	if (target_file==NULL) {
-		syscall_exit(-1);
+	// if (curr_fdt[fd]==NULL) {
+	// 	syscall_exit(-1);
+	// 	return;
+	// }
+	// struct file* target_file = curr_fdt[fd];
+
+	
+
+	// curr_fdt[fd] = NULL;
+	
+	// return;
+
+///////////////
+struct thread *t = thread_current();
+	struct file **fdt = t->fdt;
+	if (fd < 0 || fd >= 128) {
 		return;
 	}
-
-	//lock_acquire(&filesys_lock);
-	//file_close(target_file);
-	curr_fdt[fd] = NULL;
-	//curr->next_fd -= 1; 
-	//lock_release(&filesys_lock);
-	return;
-
+	if (fdt[fd] == NULL) {
+		return;
+	}
+	file_close(fdt[fd]);
+	fdt[fd] = NULL;
 
 }
 /////////////////////////////
@@ -481,8 +507,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case (SYS_EXEC) :
 			check_address(f->R.rdi);
-			//syscall_exec(f->R.rdi);
-			f->R.rax = syscall_exec(f->R.rdi);
+			// //syscall_exec(f->R.rdi);
+			// f->R.rax = syscall_exec(f->R.rdi);
+			if (syscall_exec(f->R.rdi) < 0) {
+				syscall_exit(-1);
+			}
 			break;
 		case (SYS_WAIT) :
 			//check_address(f->R.rdi);
