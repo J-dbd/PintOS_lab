@@ -230,10 +230,13 @@ If fd is 0, it reads from keyboard using input_getc(), otherwise reads from file
 int 
 syscall_read(int fd, void *buffer, unsigned size) {
 
+	//printf("ra\n");
+
 	check_address(buffer); //check buffer 
 	//check_address(buffer + size -1);
 	lock_acquire(&filesys_lock);
 	int byte_size = 0;
+	//printf("rb\n");
 	// If fd is 0, it reads from keyboard using input_getc()
 	if (fd == 0) { //keyboard input
 		
@@ -253,6 +256,7 @@ syscall_read(int fd, void *buffer, unsigned size) {
 		return -1;
 	}
 	else {
+		//printf("rc\n");
 		//lock_acquire(&filesys_lock);
 		struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 
@@ -264,7 +268,9 @@ syscall_read(int fd, void *buffer, unsigned size) {
 		byte_size = file_read(target_file, buffer, size);
 		//lock_release(&filesys_lock);
 	}
+	//printf("rd\n");
 	lock_release(&filesys_lock);
+	//printf("re\n");
 	return byte_size;
 }
 
@@ -281,8 +287,8 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 	int byte_size = 0;
 
-	lock_acquire(&filesys_lock);
 	
+	//printf("a\n");
 	if (fd == 1) { 
 		
 		//STDOUT인 경우 버퍼에 쓰여진 내용을 그대로 화면에 출력 
@@ -291,26 +297,28 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 		byte_size = size;
 	}
 	else if (fd == 0) {
-		lock_release(&filesys_lock);
 		return -1;
 	}
 	else {
+		//printf("b\n");
 		
 		if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
 			lock_release(&filesys_lock);
 			return -1;
 		}
-
+		//printf("c\n");
+		lock_acquire(&filesys_lock);
 		byte_size = file_write(target_file, buffer, size);
+		lock_release(&filesys_lock);
 	}
-	lock_release(&filesys_lock);
+	//printf("d\n");
 	return byte_size;
 }
 
 void
 syscall_seek(int fd, unsigned position) {
-	check_address(position);
+	//check_address(position);
 
 	if (fd < 2){ //fd가 0이나 1일 경우 리턴 
 		return -1;
@@ -419,6 +427,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	int syscall_num = f->R.rax;
 	//check_address(f->R.rdi);
 
+	//printf("syscall_num: %d\n", syscall_num);
+
 	switch (syscall_num) {
 		case (SYS_HALT):
 			syscall_halt();
@@ -464,7 +474,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax =  syscall_read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_WRITE) :
-			//check_address(f->R.rdi);
+			check_address(f->R.rdi);
 			f->R.rax = syscall_write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_SEEK) :
