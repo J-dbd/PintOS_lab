@@ -38,14 +38,17 @@
                 //"-p", "tests/userprog/args-multiple:args-multiple",
                 //"-p", "tests/userprog/read-zero",
                 //"-p", "tests/userprog/fork-once:fork-once",
-                "-p", "tests/userprog/wait-simple:wait-simple",
+                //"-p", "tests/userprog/wait-simple:wait-simple",
+                "-p", "tests/userprog/rox-simple:rox-simple",
                 "--",
                 "-q",
                 "-f", "run",
                 //"args-multiple some arguments for you!"
                 //"read-zero",
-                "wait-simple",
-
+                //"wait-simple",
+                //"fork-once",
+                "rox-simple",
+                
             ],
             "options": {
                 "cwd": "${workspaceFolder}/${input:project}/build"

@@ -126,7 +126,7 @@ page_fault (struct intr_frame *f) {
 	void *fault_addr;  /* Fault address. */
 
 	//project 2//
-	exit(-1);
+	syscall_exit(-1);
 
 	// int PHYS_BASE = 0x80040000;
 	// int VIRTUAL_BASE = 0x00000000;

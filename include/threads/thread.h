@@ -29,6 +29,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+//project 2
+#define FDT_MAX 128
+#define FDT_PAGES 3
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -100,30 +104,25 @@ struct thread {
 	int64_t sleeping_time;				
 	/* [ project1-B : Donation ] - priority donation */ 
 	struct lock* wait_on_lock; 
-	struct list donations; // 해당 thread가 lock의 holder일 때 lock을 요청하는 모든 threads를 저장
+	struct list donations; /*save lock requesters to lock holder*/
 	struct list_elem d_elem; 
-	int original_priority; //thread의 고유 priority를 저장
+	int original_priority; 
 	// [project1-C]
 	int recent_cpu;
 	int nice;
 
 	//////////// Project 2 /////////////////
+
+	int exit_status; 
 	
 	/// filesystem related
 	//struct file **fdt[64];
-	struct file** fdt[64]; // file descriptor table //
-	int next_fd; // file descriptor index //
-	
-	// process related
-	//int pid; = tid
+	struct file** fdt[64];   /*  file descriptor table  */
+	int next_fd;             /* file descriptor index */
+	struct file* running_file;
 
-	int is_loaded_succ; // child process 생성 flag 
-
-	bool is_exited; //process가 종료되었는지 유무
-	int exit_status; // process 정상적인 종료 상태 체크
-
-	// hierarchy 
 	struct thread* parent_process; //부모 프로세스 디스크립터 포인터 필드 추가
+	struct intr_frame parent_if;
 
 	struct list child_list; //자식 프로세스 리스트
 	struct list_elem child_elem;
@@ -133,13 +132,6 @@ struct thread {
 	struct semaphore exit_sema;
 
 
-	struct intr_frame parent_if;
-
-	struct file* running_file;
-
-
-
-	
 	//////////////////////////////////
 
 

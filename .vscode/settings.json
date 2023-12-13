@@ -31,6 +31,7 @@
         "inode.h": "c",
         "stdio.h": "c",
         "input.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "lib.h": "c"
     }
 }

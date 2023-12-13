@@ -250,9 +250,6 @@ thread_create (const char *name, int priority,
 	/// temp - hierarchy 
 	//부모 프로세스 디스크립터 포인터 저장
 	t->parent_process = thread_current(); 
-	
-	t->is_loaded_succ = 0;
-	t->is_exited = 0;
 
 	//부모 프로세스(curr)의 자식 리스트에 생성된 쓰레드(갓 만든 t) 추가
 	list_push_back(&thread_current()->child_list, &t->child_elem);
@@ -1002,26 +999,6 @@ mlfq_update_priority(void) {
 
 /////// project2 
 
-///////////////////////////////////
-////// Process Related Codes //////
-///////////////////////////////////
-
-/* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
-struct thread* get_child_thread(tid_t tid) {
-	struct thread* t;
-	struct list_elem* e;
-
-	for (e=list_begin(&thread_current()->child_list); e!=list_end(&thread_current()->child_list); e= list_next(e)) {
-		t = list_entry(e, struct thread, child_elem);
-		if (t->tid == tid) {
-			return t;
-		}
-	}
-
-	return NULL;
-}
-
-
 //////////////////////////////////////
 ////// FileSystem Related Codes //////
 //////////////////////////////////////
@@ -1039,3 +1016,25 @@ struct file* get_file_by_fd_from_curr_thread(int fd) {
 	}
 
 }
+
+
+///////////////////////////////////
+////// Process Related Codes //////
+///////////////////////////////////
+
+/* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
+struct thread* get_child_thread(tid_t tid) {
+	struct thread* t;
+	struct list_elem* e;
+
+	for (e=list_begin(&thread_current()->child_list); e!=list_end(&thread_current()->child_list); e= list_next(e)) {
+		t = list_entry(e, struct thread, child_elem);
+		if (t->tid == tid) {
+			return t;
+		}
+	}
+	
+	//printf("NO Child!\n");
+	return NULL;
+}
+

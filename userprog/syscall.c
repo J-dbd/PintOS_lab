@@ -61,14 +61,7 @@ void check_address (void* addr) {
 	/* A null pointer / A pointer to unmapped virtual memory */
 	struct thread *curr = thread_current();
 
-	// if ((is_user_vaddr(addr) == false) || addr == NULL || pml4_get_page(curr->pml4, addr) == NULL) {
-	// 	//intr_set_level (old_level);
-	// 	syscall_exit(-1);
-	// }
-
-
 	if ((is_user_vaddr(addr) == false) || addr == NULL) {
-		//intr_set_level (old_level);
 		syscall_exit(-1);
 	}
 	
@@ -77,9 +70,6 @@ void check_address (void* addr) {
 	// }
 	// page fault를 직접 수정 함
 		
-	// //intr_set_level (old_level);
-	// return;
-
 }
 
 ///////////////////////////////////
@@ -93,53 +83,45 @@ syscall_halt (void) {
 
 void
 syscall_exit(int status) {
+	//printf("exit number:%d\n", status);
 //thread == process
 	struct thread* curr = thread_current();
-	// 자식이 없을 때
-	// if (list_empty(&curr->child_list)) {
-	// 	curr->exit_status = status;
-	// }
-	// else { //자식이 하나라도 있을 때
-	// 	curr->exit_status = list_entry(list_front(&curr->child_list), struct thread, child_elem)->exit_status;
-	// }
 
-
+	//if(curr->child_elem)
+	//printf("curr name: %s\n", curr->name);
 	curr->exit_status = status;
 	/* save exit status at process descriptor */
 	printf("%s: exit(%d)\n",curr->name, status);
-
-
 	thread_exit();
 }
 
 /* Change current process to the executable whose name is given in cmd_line, passing any given arguments. This never returns if successful. Otherwise the process terminates with exit state -1, if the program cannot load or run for any reason.  Please note that file descriptors remain open across an exec call. */
-int syscall_exec(const char* file) {
-	//printf("여기? 0 \n");
+int syscall_exec(const char* file_name) {
+
+	//printf("%s\n", file_name);
 
 	/* This function does not change the name of the thread that called exec. */
 	//copy the file name by palloc
-	// char* fn_cpy = palloc_get_page (0);
-	// if (fn_cpy == NULL) {
-	// 	//printf("여기? 1 \n");
-	// 	syscall_exit(-1);
-	// 	//return -1;
-	// }
-	// memcpy(fn_cpy, file, PGSIZE);
+	
 
 	/* This never returns if successful. 
 	Otherwise the process terminates with exit state -1 */
 
-	if( process_exec(file) == -1) { //if failed
-		//printf("여기? 2 \n");
+	if( process_exec(file_name) == -1) { //if failed
 		syscall_exit(-1);
-		//return -1;
 	}
 
 }
 
 int
 syscall_fork (const char *thread_name, struct intr_frame* if_) {
-	//////// type 1
+	//////// type 2
+	//doing at process.c
+	return process_fork(thread_name, if_); 
+	//////////////// type2 end
+
+	////// type 1
+	//doing at syscall.c
 
 	// struct thread* curr = thread_current();
 	// memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
@@ -154,10 +136,6 @@ syscall_fork (const char *thread_name, struct intr_frame* if_) {
 	// return child_pid;
 
 	/////type 1 end
-
-	///////////////// type2
-	return process_fork(thread_name, if_); 
-	//////////////// type2 end
 }
 
 int
@@ -241,7 +219,7 @@ syscall_open (const char *file) {
 	// FD 0 and 1 are allocated for stdin and stdout, respectively.
 
 	int fd;
-	for (fd = 2; fd < 64; fd++) {
+	for (fd = 3; fd < 64; fd++) {
 		if(curr_fdt[fd] == NULL) {
 			curr_fdt[fd] = opened_file;
 			break;
@@ -458,12 +436,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		
 		case (SYS_FORK) :
 			//check_address(f->R.rdi);
-			syscall_fork(f->R.rdi, f);
+			f->R.rax = syscall_fork(f->R.rdi, f);
 			break;
 		case (SYS_EXEC) :
 			check_address(f->R.rdi);
-			syscall_exec(f->R.rdi);
-			//f->R.rax = syscall_exec(f->R.rdi);
+			//syscall_exec(f->R.rdi);
+			f->R.rax = syscall_exec(f->R.rdi);
 			break;
 		case (SYS_WAIT) :
 			//check_address(f->R.rdi);
