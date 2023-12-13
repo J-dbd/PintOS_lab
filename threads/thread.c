@@ -231,7 +231,8 @@ thread_create (const char *name, int priority,
 	////////////// project 2 //////////////////////
 	//Allocate File Descriptor table
 
-	t->fdt[64] = palloc_get_page(PAL_ZERO);
+	t->fdt = palloc_get_page(0);
+	//t->fdt[64] = palloc_get_multiple(PAL_ZERO, 3);
 	
 	if (t->fdt == NULL) {
 		return TID_ERROR;
@@ -243,7 +244,7 @@ thread_create (const char *name, int priority,
 	t->fdt[0] = NULL; //STDIN 표준입력
 	t->fdt[1] = NULL; //STDOUT 표준출력
 	//Initialize pointer to file descriptor table.
-	t->fdt[2] = t->fdt; /* struct thread의 포인터가 File Descriptor 테이블의 시작주소를 가리키도록 초기화 */
+	//t->fdt[2] = t->fdt; /* struct thread의 포인터가 File Descriptor 테이블의 시작주소를 가리키도록 초기화 */
 	t->next_fd = 3;
 
 
@@ -1007,6 +1008,10 @@ struct file* get_file_by_fd_from_curr_thread(int fd) {
 	struct thread* curr = thread_current();
 	struct file** fdt = curr->fdt;
 
+	if(fd>FDT_MAX) {
+		return NULL;
+	}
+
 	if (fdt[fd]) {
 		struct file* f = fdt[fd];
 		return f;
@@ -1037,4 +1042,3 @@ struct thread* get_child_thread(tid_t tid) {
 	//printf("NO Child!\n");
 	return NULL;
 }
-

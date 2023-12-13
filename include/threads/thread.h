@@ -30,7 +30,7 @@ typedef int tid_t;
 #define PRI_MAX 63                      /* Highest priority. */
 
 //project 2
-#define FDT_MAX 128
+#define FDT_MAX 64
 #define FDT_PAGES 3
 
 /* A kernel thread or user process.
@@ -117,7 +117,8 @@ struct thread {
 	
 	/// filesystem related
 	//struct file **fdt[64];
-	struct file** fdt[64];   /*  file descriptor table  */
+
+	struct file** fdt;   /*  file descriptor table  */
 	int next_fd;             /* file descriptor index */
 	struct file* running_file;
 

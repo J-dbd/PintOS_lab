@@ -83,12 +83,8 @@ syscall_halt (void) {
 
 void
 syscall_exit(int status) {
-	//printf("exit number:%d\n", status);
-//thread == process
-	struct thread* curr = thread_current();
 
-	//if(curr->child_elem)
-	//printf("curr name: %s\n", curr->name);
+	struct thread* curr = thread_current();
 	curr->exit_status = status;
 	/* save exit status at process descriptor */
 	printf("%s: exit(%d)\n",curr->name, status);
@@ -98,11 +94,7 @@ syscall_exit(int status) {
 /* Change current process to the executable whose name is given in cmd_line, passing any given arguments. This never returns if successful. Otherwise the process terminates with exit state -1, if the program cannot load or run for any reason.  Please note that file descriptors remain open across an exec call. */
 int syscall_exec(const char* file_name) {
 
-	//printf("%s\n", file_name);
-
 	/* This function does not change the name of the thread that called exec. */
-	//copy the file name by palloc
-	
 
 	/* This never returns if successful. 
 	Otherwise the process terminates with exit state -1 */
@@ -115,27 +107,8 @@ int syscall_exec(const char* file_name) {
 
 int
 syscall_fork (const char *thread_name, struct intr_frame* if_) {
-	//////// type 2
-	//doing at process.c
+
 	return process_fork(thread_name, if_); 
-	//////////////// type2 end
-
-	////// type 1
-	//doing at syscall.c
-
-	// struct thread* curr = thread_current();
-	// memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
-	// int child_pid;
-	// if((child_pid = process_fork(thread_name, if_)) < 0) {
-	// 	//if fork is failed
-	// 	return -1;
-	// }
-	// struct thread* child = get_child_thread(child_pid);
-	// sema_down(&child->load_sema);
-	// ////sema_down(&curr->load_sema);
-	// return child_pid;
-
-	/////type 1 end
 }
 
 int
@@ -151,7 +124,7 @@ syscall_wait(int pid) {
 /* Protect filesystem related code by global lock. */
 bool 
 syscall_create(const char* file, unsigned initial_size) {
-	check_address(file); // null and bad ptr together ... but bad ptr (X)
+	check_address(file); 
 	check_address(file + initial_size - 1);
 
 	int success = filesys_create(file, initial_size);
@@ -161,7 +134,7 @@ syscall_create(const char* file, unsigned initial_size) {
 		struct thread* curr = thread_current();
 		struct file** curr_fdt = curr->fdt;
 		int fd;
-		for (fd = 2; fd < 64; fd++) {
+		for (fd = 2; fd < FDT_MAX; fd++) {
 			if(curr_fdt[fd] == NULL) {
 				curr_fdt[fd] = file;
 				break;
@@ -186,7 +159,7 @@ syscall_remove(const char* file) {
 		struct thread* curr = thread_current();
 		struct file** curr_fdt = curr->fdt;
 		int fd;
-		for (fd = 2; fd < 64; fd++) {
+		for (fd = 2; fd < FDT_MAX; fd++) {
 			if(curr_fdt[fd] == file) {
 				curr_fdt[fd] = NULL;
 				break;
@@ -201,13 +174,9 @@ syscall_remove(const char* file) {
 	}
 }
 
-// 자식 프로세스의 상속 관련해서 체크가 필요해 보임
 int 
-syscall_open (const char *file) {
-	//check_address(file);
-	struct file* opened_file = filesys_open(file);
-	//file_open 은 *file과 inode가 필요하다! 
-	// struct file 에서 어떻게 fd를 추출해 낼 것인가?
+syscall_open (const char *filename) {
+	struct file* opened_file = filesys_open(filename);
 
 	if (opened_file == NULL) {
 		return -1;//checking
@@ -219,14 +188,14 @@ syscall_open (const char *file) {
 	// FD 0 and 1 are allocated for stdin and stdout, respectively.
 
 	int fd;
-	for (fd = 3; fd < 64; fd++) {
+	for (fd = 2; fd < FDT_MAX; fd++) {
 		if(curr_fdt[fd] == NULL) {
 			curr_fdt[fd] = opened_file;
 			break;
 		}
 	}
 
-	if(fd == 64) {
+	if(fd == FDT_MAX) {
 		lock_release(&filesys_lock);
 		file_close(opened_file);
 		return -1;//checking
@@ -262,7 +231,7 @@ int
 syscall_read(int fd, void *buffer, unsigned size) {
 
 	check_address(buffer); //check buffer 
-	// size는 어떻게 체크하지?
+	//check_address(buffer + size -1);
 	lock_acquire(&filesys_lock);
 	int byte_size = 0;
 	// If fd is 0, it reads from keyboard using input_getc()
@@ -278,8 +247,8 @@ syscall_read(int fd, void *buffer, unsigned size) {
 			}
 		}
 	}
-	else if (fd == 1) {
-		//printf("fd == 1\n");
+	else if (fd == 1) { 
+
 		lock_release(&filesys_lock);
 		return -1;
 	}
@@ -309,8 +278,11 @@ otherwise write to the file using file_write() function
 int 
 syscall_write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);//check buffer
-	lock_acquire(&filesys_lock);
+	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 	int byte_size = 0;
+
+	lock_acquire(&filesys_lock);
+	
 	if (fd == 1) { 
 		
 		//STDOUT인 경우 버퍼에 쓰여진 내용을 그대로 화면에 출력 
@@ -323,8 +295,6 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 		return -1;
 	}
 	else {
-		
-		struct file* target_file = get_file_by_fd_from_curr_thread(fd);
 		
 		if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
@@ -387,29 +357,53 @@ syscall_tell (int fd) {
 void
 syscall_close(int fd) {
 
-	if (fd < 2){//fd가 0이나 1일 경우 리턴 
+	// if (fd < 2){//fd가 0이나 1일 경우 리턴 
+	// 	return -1;
+	// }
+
+	// lock_acquire(&filesys_lock);
+	// struct file* target_file = get_file_by_fd_from_curr_thread(fd);
+	// if (target_file==NULL) {
+	// 		//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
+	// 		lock_release(&filesys_lock);
+	// 		//return -1;
+	// 		syscall_exit(-1);
+	// 		return;
+	// 	}
+	
+	// file_close(target_file);
+	// //close() 시 File Descriptor 테이블에 해당 엔트리 값을 NULL로 초기화
+	// struct thread* curr = thread_current();
+	// struct file** curr_fdt = curr->fdt;
+	// curr_fdt[fd] = NULL; //Update File Descriptor Table
+	// curr->next_fd -= 1; // Update Next File Descriptor
+
+	// lock_release(&filesys_lock);
+	// return;
+
+
+/////////////ver 2
+
+	if (fd <2) {
 		return -1;
 	}
 
-	lock_acquire(&filesys_lock);
-	struct file* target_file = get_file_by_fd_from_curr_thread(fd);
-	if (target_file==NULL) {
-			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
-			lock_release(&filesys_lock);
-			//return -1;
-			syscall_exit(-1);
-			return;
-		}
-	
-	file_close(target_file);
-	//close() 시 File Descriptor 테이블에 해당 엔트리 값을 NULL로 초기화
 	struct thread* curr = thread_current();
 	struct file** curr_fdt = curr->fdt;
-	curr_fdt[fd] = NULL; //Update File Descriptor Table
-	curr->next_fd -= 1; // Update Next File Descriptor
+	struct file* target_file = curr_fdt[fd];
 
-	lock_release(&filesys_lock);
+	if (target_file==NULL) {
+		syscall_exit(-1);
+		return;
+	}
+
+	//lock_acquire(&filesys_lock);
+	//file_close(target_file);
+	curr_fdt[fd] = NULL;
+	//curr->next_fd -= 1; 
+	//lock_release(&filesys_lock);
 	return;
+
 
 }
 /////////////////////////////
@@ -447,6 +441,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			//check_address(f->R.rdi);
 			f->R.rax = syscall_wait(f->R.rdi);
 			break;
+
+	//////// fileSystem realated ///////////
 		case (SYS_CREATE) :
 			//check_address(f->R.rdi);
 			f->R.rax = syscall_create(f->R.rdi, f->R.rsi);
@@ -468,7 +464,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax =  syscall_read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_WRITE) :
-			check_address(f->R.rdi);
+			//check_address(f->R.rdi);
 			f->R.rax = syscall_write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case (SYS_SEEK) :
@@ -489,4 +485,3 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			//thread_exit ();
 	}
 }
-

@@ -80,8 +80,6 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
-	//////// type 2
-	//doing at process.c
 	struct thread* curr = thread_current();
 
 	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
@@ -95,16 +93,6 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 
 	return child_pid;
 
-	//////// type2 end
-
-	////// type 1
-	//doing at syscall.c
-
-	/* Clone current thread to new thread.*/
-	// return thread_create (name,
-	// 		PRI_DEFAULT, __do_fork, thread_current ());
-
-	////// type 1 end
 }
 
 #ifndef VM
@@ -198,7 +186,7 @@ __do_fork (void *aux) {
 	// 1) dup fdt
 	struct file* f;
 
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < FDT_MAX; i++) {
 		struct file *file = parent->fdt[i];
 		if (file == NULL) 
 			continue;
@@ -297,7 +285,15 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	for (int i = 2; i<=FDT_MAX; i++) {
+		if(curr->fdt[i]!=NULL){
+			syscall_close(i);
+		}
+	}
 
+	file_close(curr->running_file);
+	palloc_free_page(curr->fdt);
+	
 	process_cleanup ();
 
 	sema_up(&curr->wait_sema);
@@ -509,7 +505,7 @@ load (const char *file_name, struct intr_frame *if_) {
 				break;
 		}
 	}
-
+	//set deny write on executing file
 	t->running_file = file;
 	file_deny_write(file);
 
@@ -530,7 +526,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	// file_close (file);
 	return success;
 }
 
