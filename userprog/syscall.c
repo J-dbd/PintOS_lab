@@ -306,14 +306,14 @@ syscall_read(int fd, void *buffer, unsigned size) {
 
 		if (target_file == NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않는다면 -1을 리턴 
-			
+			//printf("rd\n");
 			return -1;
 		}
 		lock_acquire(&filesys_lock);
 		byte_size = file_read(target_file, buffer, size);
 		lock_release(&filesys_lock);
 	}
-	//printf("rd\n");
+	
 	
 	//printf("re\n");
 	return byte_size;
@@ -332,7 +332,7 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 	//printf("fd?: %d\n", fd);
 	//printf("[write] fd: %d\n", fd);
 	
-	//printf("[write] target_file: %p\n", target_file);
+	
 	int byte_size = 0;
 
 	
@@ -350,6 +350,7 @@ syscall_write (int fd, const void *buffer, unsigned size) {
 		//printf("b\n");
 
 		struct file* target_file = get_file_by_fd_from_curr_thread(fd);
+		//printf("[write] target_file: %p\n", target_file);
 		
 		if (target_file==NULL) {
 			//만약 fd가 존재하지 않아 파일이 존재하지 않다면 -1 리턴 시킨다.
@@ -508,10 +509,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case (SYS_EXEC) :
 			check_address(f->R.rdi);
 			// //syscall_exec(f->R.rdi);
+			f->R.rax = syscall_exec(f->R.rdi);
+			// if (syscall_exec(f->R.rdi) < 0) {
+			// 	syscall_exit(-1);
+			// 	break;
+			// }
 			// f->R.rax = syscall_exec(f->R.rdi);
-			if (syscall_exec(f->R.rdi) < 0) {
-				syscall_exit(-1);
-			}
 			break;
 		case (SYS_WAIT) :
 			//check_address(f->R.rdi);
